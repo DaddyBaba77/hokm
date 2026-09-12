@@ -154,12 +154,14 @@ const SNAKE_BOT_PAUSE = 2600;
 
 // Bazaar: how long a present human gets at each decision, and how long a bot
 // pretends to think so the table reads as a game rather than a log file.
-const MONO_CLOCK = { roll: 60000, buy: 30000, auction: 20000, debt: 90000, end_turn: 45000 };
+const MONO_CLOCK = { roll: 75000, buy: 45000, auction: 30000, debt: 120000, end_turn: 60000 };
 // An offer nobody answers would block the table's only offer slot for good.
-const MONO_OFFER_MS = 45000;
+const MONO_OFFER_MS = 60000;
+// How long a bot waits before acting. Deliberately unhurried: you should have
+// time to see whose turn it is, watch the piece walk and read what happened.
 const MONO_PAUSE = {
-  roll: 1500, buy: 1500, auction: 1100, debt: 800, end_turn: 1100,
-  build: 800, sell: 700, mortgage: 700, unmortgage: 700, bankrupt: 1400,
+  roll: 2600, buy: 2400, auction: 1800, debt: 1400, end_turn: 2000,
+  build: 1300, sell: 1200, mortgage: 1200, unmortgage: 1200, bankrupt: 2200,
 };
 
 /** Apply one bot/timeout decision. Returns false if there was nothing to do. */

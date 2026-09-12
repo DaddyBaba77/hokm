@@ -27,6 +27,7 @@ window.Bazaar = (function () {
   let queue = [], running = false;
   let seenMove = 0, seenCard = 0, seenOffer = 0;
   let deedOpen = null;              // which deed card is on screen
+  let throwEnergy = 0.4;            // how hard the last throw was shaken, 0–1
   let tradeWith = null;             // trade panel target
 
   // ─────────────────────────────────────────── geometry
@@ -137,6 +138,7 @@ window.Bazaar = (function () {
       cell.style.setProperty('--img', `url("${art}")`);
       cell.appendChild(el('div', 'pic'));
       const cap = el('div', 'cap');
+      if (sp.price) cap.appendChild(el('div', 'ownmark'));
       const nm = el('div', 'nm');
       // the side rails are wide enough for one line; the tall squares may wrap
       if (side === 'left' || side === 'right') nm.appendChild(el('span', null, sp.name));
@@ -226,11 +228,13 @@ window.Bazaar = (function () {
     }
     node.dataset.spin = '0';
   }
-  function setDieFace(node, n, extra) {
+  function setDieFace(node, n, extra, energy = 0.4, ms = 800) {
     const f = FACES.find((x) => x.n === n) || FACES[0];
     const spins = Number(node.dataset.spin || 0) + 1;
     node.dataset.spin = spins;
-    const turns = 360 * (2 + (extra % 2));
+    // the harder you shook it, the more it tumbles before it settles
+    const turns = 360 * (2 + Math.round(energy * 5) + (extra % 2));
+    node.style.transitionDuration = ms + 'ms';
     node.style.transform = `rotateX(${f.show[0] + turns}deg) rotateY(${f.show[1] + turns}deg)`;
   }
 
@@ -249,6 +253,7 @@ window.Bazaar = (function () {
     board.appendChild(layer);
     buildDie($('die1'));
     buildDie($('die2'));
+    bindDice();
     bindView();
     applyView(false);
     built = true;
@@ -682,7 +687,30 @@ window.Bazaar = (function () {
     job(() => setTimeout(drain, 20));
   }
 
-  const STEP_MS = 150;
+  // How long the piece rests on each square. Slow enough to follow with your eye,
+  // and a long move is only a little quicker per square than a short one.
+  const STEP_MS = 300;
+  const STEP_MIN = 190;
+
+  /** Pop the running count on a square as the piece passes over it. */
+  function stepTick(i, n, total) {
+    const cell = cells[i];
+    if (!cell) return;
+    const old = cell.querySelector('.stepno');
+    if (old) old.remove();
+    const tag = el('span', 'stepno' + (n === total ? ' last' : ''), String(n));
+    cell.appendChild(tag);
+    setTimeout(() => tag.remove(), n === total ? 1500 : 900);
+  }
+
+  /** The counter beside the dice: "3 of 7" while a piece is walking. */
+  function stepCount(n, total) {
+    const box = $('mDiceHint');
+    if (!box) return;
+    box.classList.toggle('counting', !!total);
+    box.textContent = total ? `${n} of ${total}` : '';
+    if (!total) diceHint();
+  }
 
   function animateMove(move, done) {
     const seat = move.seat;
@@ -693,18 +721,18 @@ window.Bazaar = (function () {
       placeTokens(false);
       ensureVisible(move.to);
       sfx('hop');
-      setTimeout(() => { tokens[seat].classList.remove('leap'); done(); }, 520);
+      setTimeout(() => { tokens[seat].classList.remove('leap'); done(); }, 620);
       return;
     }
     const steps = [];
     let at = move.from;
     for (let k = 0; k < move.steps; k++) { at = (at + 1) % 40; steps.push(at); }
-    const per = Math.max(70, Math.min(STEP_MS, 1500 / Math.max(1, steps.length)));
+    const per = Math.max(STEP_MIN, Math.min(STEP_MS, 3000 / Math.max(1, steps.length)));
     let k = 0;
     const hop = () => {
       if (k >= steps.length) {
         if (steps.includes(0) && move.to !== 0) flashGo();
-        done();
+        setTimeout(() => { stepCount(0, 0); done(); }, 420);
         return;
       }
       shown[seat] = steps[k];
@@ -713,6 +741,8 @@ window.Bazaar = (function () {
       ensureVisible(steps[k]);
       sfx('hop');
       k++;
+      stepTick(steps[k - 1], k, steps.length);
+      stepCount(k, steps.length);
       setTimeout(hop, per);
     };
     hop();
@@ -727,21 +757,120 @@ window.Bazaar = (function () {
     sfx('coin');
   }
 
+  // ─────────────────────────────────────────── shaking the dice
+  //
+  // Hold the dice down and shake the mouse (or your finger). The longer and
+  // wilder the shake, the harder they tumble when you let go. The numbers still
+  // come from the server — this only decides how they arrive.
+
+  let shaking = false, charge = 0, lastPt = null, shakeRaf = 0, shakeT0 = 0;
+
+  const canRoll = () =>
+    S && S.seat !== null && S.seat !== undefined && S.seat === S.turn &&
+    S.phase === 'roll' && !S.winner && !running && queue.length === 0;
+
+  function diceHint() {
+    const hint = $('mDiceHint'), box = $('mcDice');
+    if (!hint || !box) return;
+    if (hint.classList.contains('counting')) return;
+    const ready = canRoll();
+    box.classList.toggle('ready', ready);
+    if (shaking) return;
+    hint.textContent = ready
+      ? (S.jailed && S.jailed[S.seat] ? 'shake for a double' : 'hold and shake')
+      : '';
+  }
+
+  function shakeFrame() {
+    if (!shaking) return;
+    const held = (performance.now() - shakeT0) / 2600;       // holding alone builds a little
+    const power = Math.min(1, charge + Math.min(0.35, held));
+    const amp = 1.5 + power * 13;
+    for (const id of ['die1', 'die2']) {
+      const d = $(id);
+      if (!d) continue;
+      d.style.transitionDuration = '0ms';
+      d.style.transform =
+        `translate(${(Math.random() - .5) * amp}px, ${(Math.random() - .5) * amp}px)` +
+        ` rotateX(${(Math.random() - .5) * amp * 4}deg) rotateY(${(Math.random() - .5) * amp * 4}deg)`;
+    }
+    const bar = $('mCharge');
+    if (bar) bar.style.width = Math.round(power * 100) + '%';
+    $('mcDice').style.setProperty('--glow', power.toFixed(2));
+    shakeRaf = requestAnimationFrame(shakeFrame);
+  }
+
+  function startShake(e) {
+    if (!canRoll() || shaking) return;
+    shaking = true; charge = 0; lastPt = { x: e.clientX, y: e.clientY };
+    shakeT0 = performance.now();
+    const box = $('mcDice');
+    box.classList.add('shaking');
+    box.classList.remove('landed', 'dbl');
+    try { box.setPointerCapture(e.pointerId); } catch (_) {}
+    $('mDiceHint').classList.remove('counting');
+    $('mDiceHint').textContent = 'shake!';
+    sfx('dice');
+    shakeFrame();
+    e.preventDefault();
+  }
+
+  function moveShake(e) {
+    if (!shaking || !lastPt) return;
+    const dx = e.clientX - lastPt.x, dy = e.clientY - lastPt.y;
+    lastPt = { x: e.clientX, y: e.clientY };
+    charge = Math.min(1, charge + Math.hypot(dx, dy) / 900);
+  }
+
+  function endShake() {
+    if (!shaking) return;
+    shaking = false;
+    cancelAnimationFrame(shakeRaf);
+    const held = (performance.now() - shakeT0) / 2600;
+    throwEnergy = Math.max(0.18, Math.min(1, charge + Math.min(0.35, held)));
+    const box = $('mcDice');
+    box.classList.remove('shaking');
+    box.style.removeProperty('--glow');
+    const bar = $('mCharge');
+    if (bar) bar.style.width = '0%';
+    for (const id of ['die1', 'die2']) {
+      const d = $(id);
+      if (d) { d.style.transitionDuration = ''; d.style.transform = ''; }
+    }
+    $('mDiceHint').textContent = '';
+    send({ type: 'roll' });
+  }
+
+  function bindDice() {
+    const box = $('mcDice');
+    if (!box || box.dataset.bound) return;
+    box.dataset.bound = '1';
+    box.addEventListener('pointerdown', startShake);
+    box.addEventListener('pointermove', moveShake);
+    box.addEventListener('pointerup', endShake);
+    box.addEventListener('pointercancel', endShake);
+    box.addEventListener('contextmenu', (e) => { if (canRoll()) e.preventDefault(); });
+  }
+
   function animateDice(dice, done) {
     const box = $('mcDice');
     if (!box || !dice) { done(); return; }
+    const energy = throwEnergy;              // how hard this one was shaken
+    throwEnergy = 0.4;
+    const ms = Math.round(760 + energy * 1100);
+    box.style.setProperty('--rollms', ms + 'ms');
+    box.style.setProperty('--rollamp', (1 + energy * 1.6).toFixed(2));
     box.classList.remove('landed');
     box.classList.add('rolling');
     sfx('dice');
-    setDieFace($('die1'), dice.d1, 1);
-    setDieFace($('die2'), dice.d2, 2);
+    setDieFace($('die1'), dice.d1, 1, energy, ms);
+    setDieFace($('die2'), dice.d2, 2, energy, ms);
     setTimeout(() => {
       box.classList.remove('rolling');
       box.classList.add('landed');
-      if (dice.double) box.classList.add('dbl');
-      else box.classList.remove('dbl');
-      done();
-    }, 820);
+      box.classList.toggle('dbl', !!dice.double);
+      setTimeout(done, 380);
+    }, ms);
   }
 
   function animateCard(card, done) {
@@ -763,21 +892,40 @@ window.Bazaar = (function () {
 
   // ─────────────────────────────────────────── painting
 
+  let ownAt = null;
   function paintCells() {
+    // a new owner chip on the strip changes how much room the name has
+    const ownKey = S.owner.join(',');
+    const ownChanged = ownKey !== ownAt;
+    ownAt = ownKey;
     for (const sp of META.board) {
       const cell = cells[sp.i];
       if (!cell || !sp.price) continue;
       const own = S.owner[sp.i];
       const strip = cell.querySelector('.own');
+      const mark = cell.querySelector('.ownmark');
       if (own === null || own === undefined) {
         cell.classList.remove('owned');
         strip.style.background = '';
         cell.style.removeProperty('--owncol');
+        if (mark && mark.dataset.at !== '') { mark.dataset.at = ''; mark.innerHTML = ''; }
       } else {
         cell.classList.add('owned');
-        const col = S.players[own] ? S.players[own].colour : '#fff';
+        const p = S.players[own];
+        const col = p ? p.colour : '#fff';
         strip.style.background = col;
         cell.style.setProperty('--owncol', col);
+        // a little chip saying whose it is: their piece, in their colour
+        if (mark && mark.dataset.at !== String(own)) {
+          mark.dataset.at = String(own);
+          mark.innerHTML = '';
+          mark.style.setProperty('--c', col);
+          const chip = el('i', 'om-chip');
+          if (p && p.token) chip.style.setProperty('--piece', pieceImg(p.token));
+          mark.appendChild(chip);
+          mark.appendChild(el('span', 'om-name', p ? p.name : ''));
+          mark.title = p ? `Held by ${p.name}` : '';
+        }
       }
       cell.classList.toggle('mortgaged', !!S.mortgaged[sp.i]);
       if (sp.type === 'street') {
@@ -793,6 +941,7 @@ window.Bazaar = (function () {
         }
       }
     }
+    if (ownChanged && built) fitNames();
   }
 
   let lastPlayerKey = null;
@@ -960,13 +1109,14 @@ window.Bazaar = (function () {
     if (S.phase === 'roll') {
       if (S.players[me].jailed) {
         box.appendChild(el('p', 'mhint', `In jail — turn ${S.players[me].jailTurns + 1} of 3.`));
-        btn('Roll for a double', 'primary big', () => send({ type: 'roll' }));
+        btn('Roll for a double', 'primary big', () => { throwEnergy = 0.35; send({ type: 'roll' }); });
         if (S.players[me].pardons > 0) btn('Use a pardon', 'ghost', () => send({ type: 'useCard' }));
         const f = btn(`Pay the ${money(50)} fine`, 'ghost', () => send({ type: 'payFine' }));
         if (S.players[me].cash < 50) f.disabled = true;
         return;
       }
-      btn('Roll', 'primary big', () => send({ type: 'roll' }), S.doubles > 0 ? `double — go again` : null);
+      btn('Roll', 'primary big', () => { throwEnergy = 0.35; send({ type: 'roll' }); },
+          S.doubles > 0 ? `double — go again` : null);
       return;
     }
 
@@ -1196,7 +1346,7 @@ window.Bazaar = (function () {
       card.appendChild(el('div', 'dc-foot', `Houses cost ${money(sp.build)} each · a hotel is ${money(sp.build)} plus four houses · mortgage ${money(sp.mortgage)}`));
     } else if (sp.type === 'rail') {
       const top = el('div', 'dc-top rail');
-      top.appendChild(el('div', 'dc-kind', 'CARAVANSERAI'));
+      top.appendChild(el('div', 'dc-kind', 'RAILWAY'));
       top.appendChild(el('div', 'dc-name', sp.name));
       card.appendChild(top);
       const held = own === null ? 0 : S.players[own].owns.filter((x) => META.rails.includes(x)).length;
@@ -1390,6 +1540,7 @@ window.Bazaar = (function () {
     // while the board is still animating the last move, the buttons on screen
     // describe a moment that has already passed — so freeze them until it lands
     $('mActions').classList.toggle('busy', running || queue.length > 0);
+    diceHint();
     if (!running && queue.length === 0) {
       // only trust the server's positions when nothing is waiting to be drawn
       S.players.forEach((p, i) => { shown[i] = p.pos; });

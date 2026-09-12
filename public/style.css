@@ -1216,6 +1216,79 @@ input::placeholder { color: #6d80a0; }
 .sq.art.owned { box-shadow: inset 0 0 0 2px var(--owncol), inset 0 0 10px rgba(0,0,0,.5); }
 .sq.art .mortmark { color: #ffd0c8; text-shadow: 0 1px 3px rgba(0,0,0,.9); z-index: 3; }
 
+
+/* ── the running count as a piece walks ── */
+.stepno {
+  position: absolute; z-index: 6; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 1.5em; padding: .1em .3em; border-radius: 999px;
+  font-size: clamp(8px, calc(var(--ew) * .3), 22px); font-weight: 900;
+  font-variant-numeric: tabular-nums; line-height: 1.1; text-align: center;
+  color: #08152a; background: rgba(255,229,168,.94);
+  box-shadow: 0 2px 8px rgba(0,0,0,.6), 0 0 0 1.5px rgba(120,90,30,.8);
+  pointer-events: none; animation: stepPop .9s ease-out forwards;
+}
+.stepno.last {
+  color: #04210f; background: rgba(126,240,160,.96);
+  box-shadow: 0 2px 10px rgba(0,0,0,.6), 0 0 0 2px rgba(30,120,60,.85), 0 0 18px rgba(90,230,140,.6);
+  animation: stepLand 1.5s ease-out forwards;
+}
+@keyframes stepPop {
+  0%   { transform: translate(-50%, -50%) scale(.4); opacity: 0; }
+  22%  { transform: translate(-50%, -62%) scale(1.12); opacity: 1; }
+  55%  { transform: translate(-50%, -58%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -76%) scale(.9); opacity: 0; }
+}
+@keyframes stepLand {
+  0%   { transform: translate(-50%, -50%) scale(.4); opacity: 0; }
+  16%  { transform: translate(-50%, -62%) scale(1.35); opacity: 1; }
+  40%  { transform: translate(-50%, -58%) scale(1.1); opacity: 1; }
+  80%  { transform: translate(-50%, -58%) scale(1.1); opacity: 1; }
+  100% { transform: translate(-50%, -58%) scale(1); opacity: 0; }
+}
+
+/* ── whose square is this ──
+   Their piece and their name on a small dark pill, tucked into the quiet
+   bottom corner of the painting just above the name strip, where it never
+   crowds the street name or covers the card's own title. */
+.ownmark {
+  position: absolute; left: 3px; bottom: 100%; margin-bottom: 2px; z-index: 3;
+  display: flex; align-items: center; gap: 3px; max-width: calc(100% - 6px);
+  padding: 1px 5px 1px 1px; border-radius: 999px;
+  background: rgba(6,14,30,.82); box-shadow: 0 0 0 1px var(--c, #fff), 0 1px 4px rgba(0,0,0,.5);
+  overflow: hidden; pointer-events: none;
+}
+.ownmark:empty { display: none; }
+.om-chip {
+  flex: 0 0 auto; position: relative; border-radius: 50%;
+  width: clamp(8px, calc(var(--ew) * .2), 17px); height: clamp(8px, calc(var(--ew) * .2), 17px);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 82%, rgba(255,214,150,.3), transparent 70%),
+    radial-gradient(circle at 36% 24%, #46577a, #111c33 78%);
+  box-shadow: inset 0 0 0 1.2px var(--c, #fff);
+}
+.om-chip::after {
+  content: ""; position: absolute; inset: 10% 10% 14%;
+  background: var(--piece) center bottom / contain no-repeat;
+  filter: brightness(1.18) contrast(1.05);
+}
+.om-name {
+  flex: 0 1 auto; min-width: 0;
+  font-size: clamp(5px, calc(var(--ew) * .135), 12px); font-weight: 800;
+  letter-spacing: .01em; color: #ffeccb; line-height: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* the tall squares are too narrow for a name beside the piece */
+.s-bottom .om-name, .s-top .om-name { display: none; }
+.s-bottom .ownmark, .s-top .ownmark { padding-right: 1px; }
+/* an owned square's name strip picks up a wash of their colour */
+.sq.art.owned .cap {
+  background: linear-gradient(to top,
+    color-mix(in srgb, var(--owncol) 13%, rgba(250,244,228,.96)) 0%,
+    color-mix(in srgb, var(--owncol) 11%, rgba(250,244,228,.93)) 58%,
+    rgba(250,244,228,0) 100%);
+}
+
 /* a square with its own artwork: the picture is the tile */
 .sq.has-photo {
   background: var(--photo) center / cover no-repeat, #e8dcbd;
@@ -1260,12 +1333,44 @@ input::placeholder { color: #6d80a0; }
   pointer-events: none;
 }
 
+/* ── the dice: hold them down and shake ── */
 .mono-dice {
-  display: flex; align-items: center; justify-content: center; gap: 14px;
-  flex: 0 0 auto; padding: .5rem;
-  perspective: 620px; perspective-origin: 50% 45%;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  flex: 0 0 auto; padding: .5rem .5rem .45rem;
   background: rgba(8,20,40,.55); border: 1px solid rgba(230,189,109,.2);
-  border-radius: 10px;
+  border-radius: 10px; position: relative;
+  -webkit-user-select: none; user-select: none; touch-action: none;
+}
+.mono-dice.ready {
+  cursor: grab; border-color: rgba(230,189,109,.5);
+  box-shadow: 0 0 0 1px rgba(230,189,109,.12), 0 0 18px rgba(230,189,109,.12);
+}
+.mono-dice.shaking {
+  cursor: grabbing;
+  border-color: rgba(255,214,140,calc(.4 + var(--glow, 0) * .6));
+  box-shadow: 0 0 calc(10px + var(--glow, 0) * 34px) rgba(255,196,96,calc(.12 + var(--glow, 0) * .5));
+}
+.dice-pair {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  perspective: 620px; perspective-origin: 50% 45%;
+}
+.dice-charge {
+  width: 100%; height: 3px; border-radius: 999px; overflow: hidden;
+  background: rgba(255,255,255,.08);
+}
+.dice-charge i {
+  display: block; width: 0; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #6fd39a, #e6bd6d 55%, #ff8b5a);
+  transition: width .06s linear;
+}
+.dice-hint {
+  font-size: .6rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); min-height: .8em; text-align: center;
+}
+.mono-dice.ready .dice-hint { color: var(--gold); }
+.dice-hint.counting {
+  color: #ffe6b4; font-size: .74rem; font-weight: 800; letter-spacing: .06em;
+  font-variant-numeric: tabular-nums; text-transform: none;
 }
 .mono-die {
   --size: 46px; --half: 23px;
@@ -1274,7 +1379,16 @@ input::placeholder { color: #6d80a0; }
   transition: transform .8s cubic-bezier(.23,.86,.28,1);
 }
 .mono-die .die-face { padding: 14%; border-radius: 18%; }
-.mono-dice.rolling { animation: slShakeBox .82s cubic-bezier(.36,.07,.19,.97); }
+.mono-dice.rolling { animation: monoShakeBox var(--rollms, .82s) cubic-bezier(.36,.07,.19,.97); }
+/* the throw's amplitude comes from how hard you shook it */
+@keyframes monoShakeBox {
+  0%, 100% { transform: translate(0, 0); }
+  12% { transform: translate(calc(-5px * var(--rollamp,1)), calc(-9px * var(--rollamp,1))) rotate(calc(-4deg * var(--rollamp,1))); }
+  30% { transform: translate(calc(7px * var(--rollamp,1)), calc(-14px * var(--rollamp,1))) rotate(calc(5deg * var(--rollamp,1))); }
+  48% { transform: translate(calc(-6px * var(--rollamp,1)), calc(-6px * var(--rollamp,1))) rotate(calc(-3deg * var(--rollamp,1))); }
+  66% { transform: translate(calc(4px * var(--rollamp,1)), calc(-9px * var(--rollamp,1))) rotate(calc(3deg * var(--rollamp,1))); }
+  84% { transform: translate(calc(-2px * var(--rollamp,1)), calc(-2px * var(--rollamp,1))) rotate(calc(-1deg * var(--rollamp,1))); }
+}
 .mono-dice.landed  { animation: slLandBox .4s cubic-bezier(.2,1.7,.4,1); }
 .mono-dice.dbl { border-color: rgba(230,189,109,.75); box-shadow: 0 0 16px rgba(230,189,109,.3); }
 .mono-dice.dbl .mono-die .die-face { box-shadow: inset 0 -4px 10px rgba(120,95,50,.25), 0 0 12px 2px rgba(230,189,109,.75); }

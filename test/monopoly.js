@@ -106,6 +106,39 @@ function audit(g, tag) {
   if (g.phase === 'buy') check(!!g.pending, `${tag}: the buy phase always has something to buy`);
 }
 
+// ─────────────────────────── three doubles in a row, and only three
+
+{
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(11) });
+  const seat = g.turn;
+  g.roll(seat, [2, 2]);
+  check(g.doubles === 1 && !g.jailed[seat], 'one double does not jail you');
+  if (g.phase !== 'roll') g.phase = 'roll';        // skip whatever it landed on
+  g.roll(seat, [3, 3]);
+  check(g.doubles === 2 && !g.jailed[seat], 'two doubles do not jail you either');
+  if (g.phase !== 'roll') g.phase = 'roll';
+  g.roll(seat, [5, 5]);
+  check(g.jailed[seat] === true, 'the third double in a row sends you to jail');
+  check(g.pos[seat] === 10, 'and the piece is in the dungeon');
+  check(g.turn !== seat, 'and the turn passes straight on');
+  check(g.doubles === 0, 'the double count resets for the next player');
+}
+{
+  // a double, then a plain roll, then two more doubles is still not three in a row
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(12) });
+  const seat = g.turn;
+  g.roll(seat, [2, 2]);
+  if (g.phase !== 'roll') g.phase = 'roll';
+  g.roll(seat, [2, 3]);
+  check(g.doubles === 0, 'a plain roll clears the run of doubles');
+  const s2 = g.turn;
+  g.phase = 'roll';
+  g.roll(s2, [1, 1]);
+  if (g.phase !== 'roll') g.phase = 'roll';
+  g.roll(s2, [4, 4]);
+  check(!g.jailed[s2], 'two doubles after the run was broken keep you out of jail');
+}
+
 // ─────────────────────────── rent maths, checked directly
 
 {

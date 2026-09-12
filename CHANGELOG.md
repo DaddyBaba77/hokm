@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.11.0
+
+- **Pick the dice up and shake them.** Hold the dice down and shake your mouse
+  (or your finger) — the box glows, the charge bar fills, and the harder and
+  longer you shake the more they tumble when you let go. The Roll button still
+  works if you would rather just tap.
+- **The pieces walk instead of teleporting.** Every square gets its own moment,
+  and **the game counts the move off for you** — a number pops on each square as
+  you pass over it, the last one in green where you land, and "3 of 7" sits
+  under the dice the whole way, so you can always see you got where you should.
+- **The whole table is slower.** The bots take a proper beat before they act and
+  you get longer on the clock at every decision — 75s to roll, 45s to decide on
+  a property, 30s in an auction, two minutes to settle a debt.
+- **Every owned square says who holds it** — their piece and their name on a
+  small pill in the corner of the card, and the name strip takes a wash of their
+  colour. You can read the whole board's ownership at a glance.
+- Three doubles in a row still sends you straight to jail, and there is now a
+  test that says so: two doubles don't, a plain roll in between resets the run,
+  and the count never carries over to the next player.
+
 ## 1.10.0
 
 - **Every square is one of John's painted cards now.** Twenty-two Tehran
