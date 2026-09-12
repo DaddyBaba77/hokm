@@ -1,5 +1,67 @@
 # Changelog
 
+## 1.10.0
+
+- **Every square is one of John's painted cards now.** Twenty-two Tehran
+  streets, four railways, the electric and water works, and the two decks —
+  each one the real painting, filling its square.
+- Each card comes in two cuts: a tall one for the top and bottom rails and a
+  wide one for the left and right, so the picture always fits the shape of the
+  square it is sitting in and nothing has to be thrown away to make it fit.
+- The name and the price ride on a strip of parchment across the bottom of the
+  card, clear of the painting's own title, so both are readable.
+- **The streets are the real city, priced the way the city prices itself.**
+  Shoush and Narmak at ◈60 at the bottom; Ekbatan, Kargar Shomali and Enghelab;
+  Bagh-e Golha, Gisha and Azadi; Darkeh, Gheytarieh and Tajrish; Vali-Asr, Vanak
+  and Sa'adat Abad; Pasdaran, Jordan and Velenjak; Niavaran, Farmanieh and
+  Zafaranieh; and Elahieh and Fereshteh at the top.
+- **The Metro is now four railways** — North, South, East and West — each one
+  sitting on the side of the board it is named for.
+- The colour bands, the houses and hotels, the prices and every rent are exactly
+  as they were. Only the names and the pictures have changed.
+
+## 1.9.0
+
+- **The money is real money now.** Seven Bazar notes — 1, 5, 10, 20, 50, 100 and
+  500 — and when anybody pays anybody, the notes fly across the table, the same
+  way a card leaves your hand in Hokm.
+- The amount is broken into actual denominations, so ◈750 goes over as a 500, two
+  hundreds and a fifty rather than an abstract number.
+- Notes fly between the two pieces on the board when you can see them both, and
+  fall back to the players' rows in the side panel when somebody is off-screen.
+  Taxes, fines and your GO salary fly to and from the middle of the board.
+- A running total floats up beside whoever gained or lost it, and the paper
+  riffles as it goes.
+- **Your hand runs down the left of the table** — your money and your deeds,
+  and the notes fly into and out of it when you are paid or you pay.
+- The money is piled the way you would hold it, biggest note on top, and your
+  deeds are piled in their colour sets with the front one face up and the rest
+  peeking out behind. Hover a pile — or tap its label on a phone — and it opens
+  out so you can see everything in it, ◈50 and ◈1 ×2 and all.
+- A complete set glows in its own colour, and each pile says how far along it
+  is: 2/3, 4/4.
+
+## 1.8.0
+
+- **The board zooms and pans.** Scroll or pinch to zoom, drag to move around,
+  double-click to zoom to a spot, and **Fit** for the whole board. On a desktop
+  the table now opens at reading distance — squares about three-quarters again
+  as wide as they were — because nine squares and two corners can only be so
+  wide at a fixed board size; the rest has to come from the zoom.
+- **Follow** keeps whoever's turn it is in view while you are zoomed in.
+- **The middle is a framed painting on a patterned table** rather than filling
+  the whole centre, so the board and the art no longer fight each other.
+- **The street paintings are cut to their own shape.** They were being squared
+  off before, which threw away a third of each picture and made what was left
+  look small; now the frame matches the artwork and you see all of it.
+- **Street names are set as large as each square can take.** Measured in the
+  browser, per name — so Vanak and Jordan are big, Shahrak-e Gharb still fits,
+  and no name ever snaps in the middle of a word again.
+- The colour band is thinner and sized off the square's width rather than its
+  depth, which is what a real board does.
+- Cleaned up three half-rendered pips on the dice in the centre painting; that
+  die now reads as a proper two.
+
 ## 1.7.0
 
 - **Eight playing pieces, and you pick yours.** The Persian Lion, the Azadi

@@ -76,19 +76,33 @@ window.Bazaar = (function () {
   };
 
   // A painting of the real place for every street and every metro station.
+  /**
+   * John's painted cards, one per space. Each comes in two cuts: a tall one for
+   * the top and bottom rails, a wide one for the left and right, so the picture
+   * always fills the shape of the square it is sitting in.
+   */
   const STREET_ART = {
-    1:  'shoush',      3:  'molavi',
-    5:  'tajrish',
-    6:  'narmak',      8:  'piroozi',     9:  'sattarkhan',
-    11: 'gisha',       13: 'amir-abad',   14: 'vali-asr',
-    15: 'sadeghieh',
-    16: 'gheytarieh',  18: 'nobonyad',    19: 'vanak',
-    21: 'mirdamad',    23: 'pasdaran',    24: 'jordan',
-    25: 'azadi',
-    26: 'velenjak',    27: 'saadat-abad', 29: 'shahrak-e-gharb',
-    31: 'niavaran',    32: 'farmanieh',   34: 'zafaranieh',
-    35: 'enghelab',
-    37: 'elahieh',     39: 'fereshteh',
+    1:  'shoush',       3:  'narmak',
+    5:  'rail-south',
+    6:  'ekbatan',      8:  'kargar',      9:  'enghelab',
+    11: 'baghegolha',   12: 'electric',    13: 'gisha',       14: 'azadi',
+    15: 'rail-west',
+    16: 'darkeh',       18: 'gheytarieh',  19: 'tajrish',
+    21: 'valiasr',      23: 'vanak',       24: 'saadatabad',
+    25: 'rail-north',
+    26: 'pasdaran',     27: 'jordan',      28: 'water',       29: 'velenjak',
+    31: 'niavaran',     32: 'farmanieh',   34: 'zafaranieh',
+    35: 'rail-east',
+    37: 'elahieh',      39: 'fereshteh',
+    2: 'treasury', 17: 'treasury', 33: 'treasury',
+    7: 'fortune',  22: 'fortune',  36: 'fortune',
+  };
+  /** which cut a square wants: the side rails are wide, the others are tall */
+  const artFor = (i) => {
+    const slug = STREET_ART[i];
+    if (!slug) return null;
+    const side = sideOf(i);
+    return `streets/${slug}-${side === 'left' || side === 'right' ? 'l' : 'p'}.webp`;
   };
 
   function makeCell(sp) {
@@ -114,6 +128,30 @@ window.Bazaar = (function () {
       cell.appendChild(band);
     }
 
+    // A square John painted a card for: the card is the face of the square, and
+    // the name and the price sit on a strip of parchment across the bottom of it.
+    const art = artFor(sp.i);
+    if (art) {
+      cell.classList.add('art');
+      if (sp.type !== 'street') cell.classList.add('noband');
+      cell.style.setProperty('--img', `url("${art}")`);
+      cell.appendChild(el('div', 'pic'));
+      const cap = el('div', 'cap');
+      const nm = el('div', 'nm');
+      // the side rails are wide enough for one line; the tall squares may wrap
+      if (side === 'left' || side === 'right') nm.appendChild(el('span', null, sp.name));
+      else for (const word of sp.name.split(' ')) nm.appendChild(el('span', null, word));
+      cap.appendChild(nm);
+      // the two decks say what they are in the painting; the name is enough
+      if (sp.price) cap.appendChild(el('div', 'pr', money(sp.price)));
+      cell.appendChild(cap);
+      cell.appendChild(el('div', 'own'));
+      cell.appendChild(el('div', 'mortmark', 'MORTGAGED'));
+      cell.title = sp.name;
+      if (sp.price) cell.addEventListener('click', () => openDeed(sp.i));
+      return cell;
+    }
+
     const inner = el('div', 'sq-in');
 
     if (side === 'corner') {
@@ -129,12 +167,17 @@ window.Bazaar = (function () {
     } else {
       const txt = el('div', 'txt');
       if (sp.fa) txt.appendChild(el('div', 'fa', sp.fa));
-      txt.appendChild(el('div', 'nm', sp.name));
+      // Each word gets its own span so the name can be fitted to the square by
+      // measurement rather than guesswork — see fitNames().
+      const nm = el('div', 'nm');
+      for (const word of sp.name.split(' ')) nm.appendChild(el('span', null, word));
+      txt.appendChild(nm);
       inner.appendChild(txt);
       const plate = el('div', 'plate');
-      if (STREET_ART[sp.i]) {
+      const art = artFor(sp.i);
+      if (art) {
         plate.classList.add('pic');
-        plate.style.setProperty('--img', `url("streets/${STREET_ART[sp.i]}.jpg")`);
+        plate.style.setProperty('--img', `url("${art}")`);
       } else {
         plate.innerHTML = window.BazaarArt ? window.BazaarArt.motif(sp.i) : '';
       }
@@ -206,6 +249,8 @@ window.Bazaar = (function () {
     board.appendChild(layer);
     buildDie($('die1'));
     buildDie($('die2'));
+    bindView();
+    applyView(false);
     built = true;
     requestAnimationFrame(measure);
     window.addEventListener('resize', measure);
@@ -217,18 +262,199 @@ window.Bazaar = (function () {
   function measure() {
     if (!built) return;
     const board = $('mBoard');
-    const base = board.getBoundingClientRect();
-    centres = cells.map((cell) => {
-      const r = cell.getBoundingClientRect();
-      return { x: r.left - base.left + r.width / 2, y: r.top - base.top + r.height / 2, w: r.width, h: r.height };
-    });
+    // offsetLeft/Top are layout pixels, so these stay correct however far the
+    // board is zoomed in
+    centres = cells.map((cell) => ({
+      x: cell.offsetLeft + cell.offsetWidth / 2,
+      y: cell.offsetTop + cell.offsetHeight / 2,
+      w: cell.offsetWidth,
+      h: cell.offsetHeight,
+    }));
     const edge = centres[1];
     if (edge && edge.w) {
       edgeW = edge.w; edgeH = edge.h;
+      boardSize = board.offsetWidth;
       board.style.setProperty('--ew', edge.w + 'px');
       board.style.setProperty('--ed', edge.h + 'px');
     }
+    fitNames();
+    if (!viewSet && boardSize) {
+      viewSet = true;
+      // a phone needs the whole board; a desktop can afford to start close in
+      const v = viewBox();
+      zoom = v.width < 560 ? 1 : DEFAULT_ZOOM;
+      const mine = S && S.seat !== null && S.players[S.seat] ? S.players[S.seat].pos : 0;
+      if (zoom > 1) centreOn(mine); else applyView(false);
+    } else {
+      applyView(false);
+    }
     placeTokens(true);
+  }
+
+  /**
+   * Set every street name as large as its square can actually take. Names are
+   * allowed to wrap between words, never inside one — a "MIRDAM / AD" reads as
+   * a mistake. Measured rather than estimated, so it holds for any font.
+   */
+  function fitNames() {
+    const names = [];
+    for (const cell of cells) {
+      if (!cell) continue;
+      const nm = cell.querySelector('.nm');
+      if (nm) { nm.style.setProperty('--nms', '1'); names.push(nm); }
+    }
+    // one read pass, then one write pass, so the browser reflows once
+    const fits = names.map((nm) => {
+      let widest = 0;
+      for (const word of nm.children) widest = Math.max(widest, word.offsetWidth);
+      return widest > 0 ? Math.min(1, (nm.clientWidth * 0.96) / widest) : 1;
+    });
+    names.forEach((nm, i) => nm.style.setProperty('--nms', fits[i].toFixed(3)));
+  }
+
+  // ─────────────────────────────────────────── zoom and pan
+
+  let zoom = 1, panX = 0, panY = 0, boardSize = 0, follow = true, viewSet = false;
+  const MIN_ZOOM = 1, MAX_ZOOM = 3.6;
+  // Nine squares and two corners can only be so wide at a given board size, so
+  // the squares get their size from the zoom instead: the table opens reading
+  // distance from your own piece, and Fit pulls back to the whole board.
+  const DEFAULT_ZOOM = 1.65;
+
+  function viewBox() {
+    const v = $('mView');
+    return v ? v.getBoundingClientRect() : { width: 0, height: 0, left: 0, top: 0 };
+  }
+
+  /** Keep the board covering the window; at fit size it just sits still. */
+  function clampPan() {
+    if (!boardSize) { panX = 0; panY = 0; return; }
+    const v = viewBox();
+    const w = boardSize * zoom;
+    const slackX = v.width - w, slackY = v.height - w;
+    panX = slackX >= 0 ? slackX / 2 : Math.min(0, Math.max(slackX, panX));
+    panY = slackY >= 0 ? slackY / 2 : Math.min(0, Math.max(slackY, panY));
+  }
+
+  function applyView(smooth) {
+    const board = $('mBoard'), v = $('mView');
+    if (!board) return;
+    clampPan();
+    board.style.transition = smooth ? 'transform .28s cubic-bezier(.25,.9,.3,1)' : 'none';
+    board.style.transform = `translate(${panX.toFixed(1)}px, ${panY.toFixed(1)}px) scale(${zoom})`;
+    if (v) v.classList.toggle('zoomed', zoom > 1.001);
+    const out = $('mZoomOut'), inn = $('mZoomIn');
+    if (out) out.disabled = zoom <= MIN_ZOOM + 0.001;
+    if (inn) inn.disabled = zoom >= MAX_ZOOM - 0.001;
+  }
+
+  /** Zoom about a point given in client coordinates. */
+  function zoomAt(clientX, clientY, factor, smooth) {
+    const v = viewBox();
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
+    if (Math.abs(next - zoom) < 0.0005) return;
+    const px = clientX - v.left, py = clientY - v.top;
+    // hold whatever is under the pointer still
+    panX = px - (px - panX) * (next / zoom);
+    panY = py - (py - panY) * (next / zoom);
+    zoom = next;
+    applyView(smooth);
+  }
+
+  function setZoom(next, smooth) {
+    const v = viewBox();
+    zoomAt(v.left + v.width / 2, v.top + v.height / 2, next / zoom, smooth);
+  }
+
+  /** Put a square in the middle of the window. */
+  function centreOn(square) {
+    if (!boardSize || !centres[square]) return;
+    const v = viewBox();
+    panX = v.width / 2 - centres[square].x * zoom;
+    panY = v.height / 2 - centres[square].y * zoom;
+    applyView(false);
+  }
+
+  /** Slide a square into view, if we are zoomed in far enough to need it. */
+  function ensureVisible(square) {
+    if (!follow || zoom <= 1.001 || !centres[square]) return;
+    const v = viewBox();
+    const c = centres[square];
+    const x = c.x * zoom + panX, y = c.y * zoom + panY;
+    const m = Math.min(v.width, v.height) * 0.22;
+    let dx = 0, dy = 0;
+    if (x < m) dx = m - x; else if (x > v.width - m) dx = v.width - m - x;
+    if (y < m) dy = m - y; else if (y > v.height - m) dy = v.height - m - y;
+    if (dx || dy) { panX += dx; panY += dy; applyView(true); }
+  }
+
+  function bindView() {
+    const v = $('mView');
+    if (!v || v.dataset.bound) return;
+    v.dataset.bound = '1';
+
+    v.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0016), false);
+    }, { passive: false });
+
+    const pointers = new Map();
+    let pinchFrom = 0, last = null;
+    v.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.mono-zoom')) return;   // the controls are not the board
+      // let the squares keep their clicks; only drag with the background or when zoomed
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 1) { last = { x: e.clientX, y: e.clientY, moved: 0 }; }
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        pinchFrom = Math.hypot(a.x - b.x, a.y - b.y);
+      }
+    });
+    v.addEventListener('pointermove', (e) => {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        const now = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinchFrom > 0) {
+          zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, now / pinchFrom, false);
+          pinchFrom = now;
+        }
+        return;
+      }
+      if (!last || zoom <= 1.001) return;
+      const dx = e.clientX - last.x, dy = e.clientY - last.y;
+      last.moved += Math.abs(dx) + Math.abs(dy);
+      if (last.moved > 4) {
+        v.classList.add('dragging');
+        v.setPointerCapture(e.pointerId);
+        panX += dx; panY += dy;
+        applyView(false);
+      }
+      last.x = e.clientX; last.y = e.clientY;
+    });
+    const release = (e) => {
+      pointers.delete(e.pointerId);
+      if (pointers.size < 2) pinchFrom = 0;
+      if (pointers.size === 0) { v.classList.remove('dragging'); last = null; }
+    };
+    v.addEventListener('pointerup', release);
+    v.addEventListener('pointercancel', release);
+    // a drag across a square shouldn't also open its deed card
+    v.addEventListener('click', (e) => {
+      if (last && last.moved > 4) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+    v.addEventListener('dblclick', (e) => zoomAt(e.clientX, e.clientY, zoom > 1.5 ? 1 / zoom : 1.9, true));
+
+    $('mZoomIn').addEventListener('click', () => setZoom(zoom * 1.35, true));
+    $('mZoomOut').addEventListener('click', () => setZoom(zoom / 1.35, true));
+    $('mZoomFit').addEventListener('click', () => { zoom = 1; panX = panY = 0; applyView(true); });
+    $('mFollow').addEventListener('click', () => {
+      follow = !follow;
+      $('mFollow').classList.toggle('on', follow);
+      if (follow && S) ensureVisible(S.players[S.turn] ? S.players[S.turn].pos : 0);
+    });
+    window.addEventListener('resize', () => applyView(false));
   }
 
   // ─────────────────────────────────────────── tokens
@@ -303,6 +529,148 @@ window.Bazaar = (function () {
     });
   }
 
+  // ─────────────────────────────────────────── money changing hands
+  //
+  // The same idea as a card leaving your hand in Hokm: the thing itself flies
+  // across the table, so you see who paid whom rather than watching two numbers
+  // quietly change.
+
+  const NOTES = [500, 100, 50, 20, 10, 5, 1];
+
+  /** Break an amount into at most a handful of notes, biggest first. */
+  function billsFor(amount) {
+    const out = [];
+    let left = Math.max(0, Math.round(amount));
+    for (const note of NOTES) {
+      while (left >= note && out.length < 7) { out.push(note); left -= note; }
+    }
+    if (!out.length && amount > 0) out.push(1);
+    return out;
+  }
+
+  /** Where on screen a player's money lives: their piece if you can see it, else their row. */
+  function anchorFor(seat) {
+    if (S && seat === S.seat) {
+      const hand = $('mNotes');
+      if (hand) {
+        const r = hand.getBoundingClientRect();
+        if (r.width > 0) return { x: r.left + Math.min(r.width * 0.4, 90), y: r.top + r.height / 2 };
+      }
+    }
+    const tok = tokens[seat];
+    if (tok) {
+      const r = tok.getBoundingClientRect();
+      const v = $('mView') ? $('mView').getBoundingClientRect() : null;
+      const onBoard = v && r.width > 0 &&
+        r.left > v.left - 4 && r.right < v.right + 4 && r.top > v.top - 4 && r.bottom < v.bottom + 4;
+      if (onBoard) return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
+    const row = $('mPlayers') ? $('mPlayers').children[seat] : null;
+    if (row) {
+      const r = row.getBoundingClientRect();
+      return { x: r.left + r.width * 0.24, y: r.top + r.height / 2 };
+    }
+    return null;
+  }
+
+  /** The bank: the middle of the board, or the header if the board is scrolled away. */
+  function bankAnchor() {
+    const v = $('mView');
+    if (v) { const r = v.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+    const h = $('mBank');
+    if (h) { const r = h.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.bottom }; }
+    return null;
+  }
+
+  function fxLayer() {
+    let layer = $('moneyFx');
+    if (!layer) {
+      layer = el('div', 'money-fx');
+      layer.id = 'moneyFx';
+      document.body.appendChild(layer);
+    }
+    return layer;
+  }
+
+  function cashPop(at, amount, up) {
+    if (!at) return;
+    const layer = fxLayer();
+    const tag = el('div', 'cashpop ' + (up ? 'up' : 'down'), (up ? '+' : '−') + money(Math.abs(amount)));
+    tag.style.left = (at.x + (up ? 26 : -26)) + 'px';
+    tag.style.top = (at.y - 14) + 'px';
+    layer.appendChild(tag);
+    tag.animate(
+      [{ transform: 'translate(-50%, -50%) scale(.7)', opacity: 0 },
+       { transform: 'translate(-50%, -140%) scale(1)', opacity: 1, offset: .25 },
+       { transform: 'translate(-50%, -320%) scale(1)', opacity: 0 }],
+      { duration: 1300, easing: 'cubic-bezier(.2,.8,.3,1)' }
+    ).onfinish = () => tag.remove();
+  }
+
+  /** Fly the notes from one place to another. */
+  function flyMoney(from, to, amount) {
+    if (!from || !to || amount <= 0) return;
+    const layer = fxLayer();
+    const bills = billsFor(amount);
+    const spread = Math.min(40, 8 + bills.length * 4);
+    bills.forEach((note, i) => {
+      const bill = el('div', 'bill');
+      bill.style.setProperty('--note', `url("money/${note}.webp")`);
+      layer.appendChild(bill);
+      const jitterX = (Math.random() - .5) * spread;
+      const jitterY = (Math.random() - .5) * spread;
+      // a shallow arc, so the notes sweep rather than slide
+      const midX = (from.x + to.x) / 2 + (to.y - from.y) * 0.14;
+      const midY = (from.y + to.y) / 2 - Math.abs(to.x - from.x) * 0.12 - 26;
+      const spin = (Math.random() - .5) * 60;
+      const anim = bill.animate([
+        { transform: `translate(${from.x}px, ${from.y}px) translate(-50%,-50%) rotate(${spin * .4}deg) scale(.5)`, opacity: 0 },
+        { transform: `translate(${from.x + jitterX}px, ${from.y + jitterY}px) translate(-50%,-50%) rotate(${spin * .6}deg) scale(1)`, opacity: 1, offset: .16 },
+        { transform: `translate(${midX + jitterX}px, ${midY + jitterY}px) translate(-50%,-50%) rotate(${spin}deg) scale(1.06)`, opacity: 1, offset: .55 },
+        { transform: `translate(${to.x}px, ${to.y}px) translate(-50%,-50%) rotate(${spin * 1.5}deg) scale(.42)`, opacity: 0 },
+      ], { duration: 780 + i * 30, delay: i * 70, easing: 'cubic-bezier(.32,.72,.35,1)', fill: 'both' });
+      anim.onfinish = () => bill.remove();
+    });
+    sfx('cash');
+  }
+
+  /**
+   * Compare the cash on the table with the cash a moment ago and play whatever
+   * moved. A single payer and a single payee is a transfer between them;
+   * anything else is business with the bank.
+   */
+  let prevCash = null;
+  function playMoneyMoves() {
+    if (!S || !S.players) return;
+    const now = S.players.map((p) => p.cash);
+    if (!prevCash || prevCash.length !== now.length) { prevCash = now; return; }
+    const deltas = now.map((c, i) => c - prevCash[i]);
+    prevCash = now;
+    if (!deltas.some((d) => d !== 0)) return;
+
+    const down = deltas.map((d, i) => ({ d, i })).filter((x) => x.d < 0);
+    const up = deltas.map((d, i) => ({ d, i })).filter((x) => x.d > 0);
+
+    if (down.length === 1 && up.length === 1 && Math.abs(down[0].d) === up[0].d) {
+      const a = anchorFor(down[0].i), b = anchorFor(up[0].i);
+      flyMoney(a, b, up[0].d);
+      cashPop(a, down[0].d, false);
+      cashPop(b, up[0].d, true);
+      return;
+    }
+    const bank = bankAnchor();
+    for (const { d, i } of down) {
+      const a = anchorFor(i);
+      flyMoney(a, bank, -d);
+      cashPop(a, d, false);
+    }
+    for (const { d, i } of up) {
+      const b = anchorFor(i);
+      flyMoney(bank, b, d);
+      cashPop(b, d, true);
+    }
+  }
+
   // ─────────────────────────────────────────── animation queue
 
   function enqueue(job) { queue.push(job); if (!running) drain(); }
@@ -323,6 +691,7 @@ window.Bazaar = (function () {
       shown[seat] = move.to;
       tokens[seat].classList.add('leap');
       placeTokens(false);
+      ensureVisible(move.to);
       sfx('hop');
       setTimeout(() => { tokens[seat].classList.remove('leap'); done(); }, 520);
       return;
@@ -341,6 +710,7 @@ window.Bazaar = (function () {
       shown[seat] = steps[k];
       if (steps[k] === 0) flashGo();
       placeTokens(false);
+      ensureVisible(steps[k]);
       sfx('hop');
       k++;
       setTimeout(hop, per);
@@ -688,6 +1058,40 @@ window.Bazaar = (function () {
 
   // ─────────────────────────────────────────── my deeds
 
+  /** Your cash, piled up the way you would hold it: biggest note on top. */
+  function paintNotes() {
+    const box = $('mNotes');
+    const me = S.seat;
+    const cash = me === null || me === undefined ? 0 : S.players[me].cash;
+    $('mHandTotal').textContent = money(cash);
+    if (box.dataset.at === String(cash)) return;
+    box.dataset.at = String(cash);
+
+    const counts = {};
+    let left = Math.max(0, Math.round(cash));
+    for (const note of NOTES) {
+      const n = Math.floor(left / note);
+      if (n > 0) { counts[note] = n; left -= n * note; }
+    }
+    box.innerHTML = '';
+    box.classList.toggle('empty', cash <= 0);
+    let i = 0;
+    for (const note of NOTES) {
+      const n = counts[note];
+      if (!n) continue;
+      const row = el('div', 'note-row');
+      row.style.setProperty('--i', String(i));
+      row.style.zIndex = String(40 - i);   // the top of the pile covers the rest
+      i++;
+      const img = el('span', 'note-img');
+      img.style.setProperty('--note', `url("money/${note}.webp")`);
+      row.appendChild(img);
+      row.appendChild(el('span', 'note-x', n > 1 ? `${money(note)} \u00d7${n}` : money(note)));
+      row.title = `${n} \u00d7 ${money(note)}`;
+      box.appendChild(row);
+    }
+  }
+
   let lastDeedKey = null;
   function paintDeeds() {
     const me = S.seat;
@@ -696,36 +1100,61 @@ window.Bazaar = (function () {
     if (key === lastDeedKey) return;
     lastDeedKey = key;
     const box = $('mDeeds');
+    const wasOpen = new Set([...box.querySelectorAll('.hd-group.open')].map((n) => n.dataset.g));
     box.innerHTML = '';
-    if (me === null || me === undefined) return;
+    if (me === null || me === undefined) {
+      box.appendChild(el('p', 'hand-empty', 'You are watching this one.'));
+      return;
+    }
     const mine = S.players[me].owns;
-    if (!mine.length) { box.appendChild(el('p', 'mhint dim', 'You hold no deeds yet.')); return; }
+    if (!mine.length) { box.appendChild(el('p', 'hand-empty', 'No deeds yet \u2014 buy the square you land on.')); return; }
+
     const byGroup = {};
     for (const i of mine) {
       const sp = META.board[i];
-      const key = sp.type === 'street' ? sp.group : sp.type;
-      (byGroup[key] ||= []).push(i);
+      const key2 = sp.type === 'street' ? sp.group : sp.type;
+      (byGroup[key2] ||= []).push(i);
     }
-    for (const [key, list] of Object.entries(byGroup)) {
-      const g = META.groups[key];
-      const wrap = el('div', 'dg');
-      const head = el('div', 'dg-head');
-      head.style.setProperty('--c', g ? g.colour : '#c9b48a');
-      const full = g && list.length === g.size;
-      head.appendChild(el('span', 'dg-name', g ? g.name : key === 'rail' ? 'The Metro' : 'Utilities'));
-      if (full) head.appendChild(el('span', 'dg-full', 'complete'));
+    for (const [gkey, list] of Object.entries(byGroup)) {
+      const g = META.groups[gkey];
+      const colour = g ? g.colour : gkey === 'rail' ? '#9a7434' : '#4aa3d6';
+      const whole = g ? g.size : gkey === 'rail' ? 4 : 2;
+      const wrap = el('div', 'hd-group' + (list.length === whole ? ' full' : ''));
+      wrap.style.setProperty('--c', colour);
+      wrap.dataset.g = gkey;
+      if (wasOpen.has(gkey)) wrap.classList.add('open');
+
+      // the label doubles as the way to open the pile on a touch screen
+      const name = g ? g.name : gkey === 'rail' ? 'The Railways' : 'Utilities';
+      const head = el('button', 'hd-gname', name);
+      head.type = 'button';
+      head.appendChild(el('i', '', `${list.length}/${whole}`));
+      head.addEventListener('click', () => wrap.classList.toggle('open'));
       wrap.appendChild(head);
-      for (const i of list) {
+
+      const cards = el('div', 'hd-cards');
+      list.sort((a, b) => a - b).forEach((i, n) => {
         const sp = META.board[i];
-        const row = el('button', 'dr' + (S.mortgaged[i] ? ' mort' : ''));
-        row.appendChild(el('span', 'dr-nm', sp.name));
+        const card = el('button', 'hd' + (S.mortgaged[i] ? ' mort' : ''));
+        card.style.setProperty('--c', colour);
+        card.style.setProperty('--i', String(n));
+        card.style.zIndex = String(30 - n);  // first card on top, the rest behind it
+        card.title = `${sp.name} \u2014 ${money(sp.price)}`;
+        card.appendChild(el('span', 'hd-band'));
+        const pic = el('span', 'hd-pic');
+        if (STREET_ART[i]) pic.style.setProperty('--img', `url("streets/${STREET_ART[i]}-p.webp")`);
+        else pic.innerHTML = window.BazaarArt ? window.BazaarArt.motif(i) : '';
+        card.appendChild(pic);
         if (sp.type === 'street' && S.houses[i] > 0) {
-          row.appendChild(el('span', 'dr-b', S.houses[i] === 5 ? 'hotel' : '⌂'.repeat(S.houses[i])));
+          card.appendChild(el('span', 'hd-b', S.houses[i] === 5 ? 'HOTEL' : '\u2302'.repeat(S.houses[i])));
         }
-        if (S.mortgaged[i]) row.appendChild(el('span', 'dr-m', 'mortgaged'));
-        row.addEventListener('click', () => openDeed(i));
-        wrap.appendChild(row);
-      }
+        // the cards are narrow, so drop the part of the name the group already says
+        const short = sp.name.replace(/\s+Railway$/, '').replace(/^Tehran\s+/, '');
+        card.appendChild(el('span', 'hd-nm', short));
+        card.addEventListener('click', () => openDeed(i));
+        cards.appendChild(card);
+      });
+      wrap.appendChild(cards);
       box.appendChild(wrap);
     }
   }
@@ -957,6 +1386,7 @@ window.Bazaar = (function () {
     paintLog();
     paintOffer();
     paintAuction();
+    playMoneyMoves();
     // while the board is still animating the last move, the buttons on screen
     // describe a moment that has already passed — so freeze them until it lands
     $('mActions').classList.toggle('busy', running || queue.length > 0);
@@ -966,6 +1396,7 @@ window.Bazaar = (function () {
       placeTokens(false);
       actionBar();
       paintDeeds();
+      paintNotes();
       if (deedOpen !== null) paintDeed();
     }
     const over = $('mOver');
@@ -1010,7 +1441,12 @@ window.Bazaar = (function () {
   function reset() {
     built = false; cells = []; tokens = []; shown = []; centres = [];
     queue = []; running = false; seenMove = 0; seenCard = 0; seenOffer = 0;
+    zoom = 1; panX = 0; panY = 0; viewSet = false; prevCash = null;
+    const fx = $('moneyFx');
+    if (fx) fx.innerHTML = '';
     lastActionKey = null; lastDeedKey = null; lastPlayerKey = null;
+    const notes = $('mNotes');
+    if (notes) delete notes.dataset.at;
     lastAuctionKey = null; lastOfferKey = null;
     deedOpen = null; tradeWith = null;
     clearInterval(clockTimer);
@@ -1024,6 +1460,8 @@ window.Bazaar = (function () {
       .then((r) => r.json())
       .then((meta) => { META = meta; if (S) render(S); })
       .catch(() => {});
+    // on a touch screen there is no hover, so the label opens the pile
+    $('mCashLabel').addEventListener('click', () => $('mCashBox').classList.toggle('open'));
     $('mDeedClose').addEventListener('click', closeDeed);
     $('mDeed').addEventListener('click', (e) => { if (e.target.id === 'mDeed') closeDeed(); });
     $('mTradeClose').addEventListener('click', closeTrade);

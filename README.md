@@ -122,6 +122,15 @@ the settings change as they go:
 | Starting cash | ◈1,000 to ◈2,500 |
 | House rules | the tea house jackpot · double salary for landing exactly on GO · no rent while the owner is in the dungeon |
 
+Money is seven printed notes — 1, 5, 10, 20, 50, 100 and 500 — kept in
+`public/money/`. When somebody pays, the amount is broken into denominations and
+the notes fly from payer to payee across the board.
+
+The board zooms: scroll or pinch to zoom, drag to move around, double-click to
+zoom to a spot, **Fit** for the whole board, and **Follow** to keep whoever is
+playing in view. On a desktop it opens zoomed in on your own piece; on a phone
+it opens on the whole board.
+
 Click any square, or any deed in your list, to see its title card — the full rent
 ladder with your current rung picked out, and the buttons to build, sell,
 mortgage or lift a mortgage. Hit **Offer** next to another player to put a trade

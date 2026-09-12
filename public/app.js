@@ -6,7 +6,7 @@ const SUIT_NAME = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
 const RED = new Set(['H', 'D']);
 const RANK_LABEL = { T: '10' };
 const RANK_VALUE = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
-const VERSION = '1.7.0';
+const VERSION = '1.10.0';
 const TEAM_NAME = { A: 'Azure', B: 'Crimson' };
 const POINTS_TO_WIN = 7;
 
@@ -123,6 +123,9 @@ const sound = (() => {
     // bazaar
     coin()     { [1046, 1568].forEach((f, i) => tone(f, 0.14, { type: 'triangle', gain: 0.07, delay: i * 0.05 })); },
     flip()     { noise(0.08, { gain: 0.055, hp: 2400 }); tone(420, 0.07, { type: 'triangle', gain: 0.05 }); },
+    cash()     { for (let i = 0; i < 3; i++) noise(0.07, { gain: 0.045, hp: 2600, delay: i * 0.07 });
+                 tone(880, 0.1, { type: 'triangle', gain: 0.05, delay: 0.04 });
+                 tone(1320, 0.14, { type: 'triangle', gain: 0.04, delay: 0.12 }); },
     bite()     { tone(130, 0.2, { type: 'square', gain: 0.1, slide: -70 }); noise(0.16, { gain: 0.1, hp: 500 });
                  [520, 300].forEach((f, i) => tone(f, 0.1, { type: 'sawtooth', gain: 0.06, slide: -180, delay: i * 0.06 })); },
   };

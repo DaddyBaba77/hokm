@@ -87,7 +87,7 @@
         <li>Land on an unclaimed street and you buy it — or it goes to auction, depending on the table settings.</li>
         <li>Land on someone else's and you pay their rent. Hold every street of one colour and the rent doubles, and you can start building.</li>
         <li>Four houses become a hotel. Build evenly across a colour group — no stacking one street.</li>
-        <li>Metro stations charge more the more of the four you hold; the utilities charge a multiple of your roll.</li>
+        <li>Railways charge more the more of the four you hold; the utilities charge a multiple of your roll.</li>
         <li>Three doubles in a row and the guard takes you to jail. Pay ◈50, use a pardon, or roll a double to get out.</li>
         <li>Short of cash? Mortgage a deed for half its price, or sell buildings back at half. Run out of both and you are ruined.</li>
         <li>The host picks how a game ends — on a clock, at the first ruin, or the last one standing.</li>
@@ -274,8 +274,24 @@
   </header>
 
   <div class="mono-wrap">
+    <aside class="mono-hand" id="mHand">
+      <div class="hand-cash" id="mCashBox">
+        <button type="button" class="hand-label" id="mCashLabel">MONEY <b id="mHandTotal">&#9672;0</b></button>
+        <div class="notes" id="mNotes"></div>
+      </div>
+      <div class="hand-deeds" id="mDeeds"></div>
+    </aside>
+
     <div class="mono-boardwrap">
-      <div class="mono-board" id="mBoard"></div>
+      <div class="mono-view" id="mView">
+        <div class="mono-board" id="mBoard"></div>
+        <div class="mono-zoom">
+        <button type="button" id="mZoomOut" aria-label="Zoom out">&minus;</button>
+        <button type="button" id="mZoomFit">Fit</button>
+        <button type="button" id="mZoomIn" aria-label="Zoom in">+</button>
+          <button type="button" id="mFollow" class="on" title="Keep the piece whose turn it is in view">Follow</button>
+        </div>
+      </div>
     </div>
 
     <aside class="mono-side">
@@ -286,7 +302,6 @@
         <div class="mono-die" id="die2"></div>
       </div>
       <div class="mono-actions" id="mActions"></div>
-      <div class="mono-deeds" id="mDeeds"></div>
       <div class="mono-log" id="mLog"></div>
     </aside>
   </div>

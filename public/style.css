@@ -927,7 +927,37 @@ input::placeholder { color: #6d80a0; }
 .mono-wrap {
   flex: 1 1 auto; min-height: 0; display: flex; gap: 12px; padding: 0 12px 12px;
 }
-.mono-boardwrap { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; }
+.mono-boardwrap {
+  flex: 1 1 auto; min-width: 0; min-height: 0; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+/* the window onto the board — the board itself can be scaled up inside it */
+.mono-view {
+  position: relative; overflow: hidden;
+  /* at fit size a swipe should still scroll the page; once zoomed in, the
+     board takes the gesture so you can drag around it */
+  touch-action: pan-y;
+  /* whatever height is left once the header and your hand have taken theirs */
+  height: 100%; width: auto; aspect-ratio: 1; max-width: 100%;
+  border-radius: 10px; cursor: default;
+  -webkit-user-select: none; user-select: none;
+}
+.mono-view.zoomed { cursor: grab; touch-action: none; }
+.mono-view.dragging { cursor: grabbing; }
+.mono-zoom {
+  position: absolute; right: 7px; bottom: 7px; display: flex; gap: 4px; z-index: 3;
+}
+.mono-zoom button {
+  min-width: 30px; height: 28px; padding: 0 .5rem; cursor: pointer;
+  background: rgba(8,20,40,.82); color: var(--ink); font-family: inherit;
+  border: 1px solid rgba(230,189,109,.32); border-radius: 7px;
+  font-size: .78rem; font-weight: 700; line-height: 1;
+  backdrop-filter: blur(3px);
+}
+.mono-zoom button:hover { border-color: rgba(230,189,109,.7); background: rgba(18,38,70,.9); }
+.mono-zoom button:disabled { opacity: .35; cursor: default; }
+.mono-zoom #mFollow { font-size: .68rem; font-weight: 600; color: var(--muted); }
+.mono-zoom #mFollow.on { color: #ffe6b4; border-color: var(--gold); background: rgba(230,189,109,.2); }
 .mono-side {
   flex: 0 0 278px; display: flex; flex-direction: column; gap: 8px;
   min-height: 0; overflow: hidden; padding-bottom: 40px;
@@ -937,10 +967,13 @@ input::placeholder { color: #6d80a0; }
 .mono-board {
   --ew: 40px; --ed: 64px;
   position: relative;
-  width: min(100%, 96vh); aspect-ratio: 1;
+  width: 100%; height: 100%;
+  transform-origin: 0 0; will-change: transform;
   display: grid;
-  grid-template-columns: 1.58fr repeat(9, 1fr) 1.58fr;
-  grid-template-rows: 1.58fr repeat(9, 1fr) 1.58fr;
+  /* the corners set how deep every square is, and so how much of the board the
+     middle takes: deeper squares, smaller middle, bigger pictures */
+  grid-template-columns: 1.7fr repeat(9, 1fr) 1.7fr;
+  grid-template-rows: 1.7fr repeat(9, 1fr) 1.7fr;
   background:
     radial-gradient(ellipse 70% 70% at 50% 46%, #14325f 0%, #0d2549 60%, #08192f 100%);
   border: 2px solid #6d5121;
@@ -974,14 +1007,14 @@ input::placeholder { color: #6d80a0; }
    Only the padding changes, to clear the colour band on the inner edge. */
 .sq-in {
   position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: flex-start;
+  align-items: center; justify-content: space-between;
   padding: 3px 2px 2px; text-align: center; gap: 0;
   pointer-events: none;
 }
-.t-street.s-bottom .sq-in { padding-top: calc(var(--ed) * .235); }
-.t-street.s-top .sq-in    { padding-bottom: calc(var(--ed) * .235); }
-.t-street.s-left .sq-in   { padding-right: calc(var(--ed) * .235); }
-.t-street.s-right .sq-in  { padding-left: calc(var(--ed) * .235); }
+.t-street.s-bottom .sq-in { padding-top: calc(var(--ew) * .38); }
+.t-street.s-top .sq-in    { padding-bottom: calc(var(--ew) * .38); }
+.t-street.s-left .sq-in   { padding-right: calc(var(--ew) * .38); }
+.t-street.s-right .sq-in  { padding-left: calc(var(--ew) * .38); }
 .s-corner .sq-in { justify-content: center; padding: 5%; gap: 1px; }
 
 /* On the two side rails a square is wider than it is deep, so the name and the
@@ -1011,15 +1044,26 @@ input::placeholder { color: #6d80a0; }
 .s-left .plate, .s-right .plate { flex: 0 0 36%; width: auto; height: 86%; margin: 0 1px; }
 .plate .mo { width: 100%; height: 100%; display: block; }
 
-/* a street with a painting of the real place */
+/* A street with a painting of the real place. The frame is cut to the paintings'
+   own shape, so none of the picture has to be thrown away to fit it. */
+/* The paintings come in two cuts, one for each shape of square, and the frame
+   is cut to match — so the picture fills its slot without losing anything.
+   `top` on the background keeps each card's own painted title in view. */
 .plate.pic {
-  background: var(--img) center / cover no-repeat, #e8dcbd;
+  margin: 2px 0;
+  background: var(--img) center top / cover no-repeat, #e8dcbd;
   padding: 0;
   border: 1px solid rgba(52,38,16,.55);
   border-radius: 1px;
   box-shadow: 0 1px 2px rgba(52,38,16,.3), inset 0 0 0 1px rgba(255,250,235,.4);
 }
-.s-left .plate.pic, .s-right .plate.pic { flex: 0 0 33%; }
+.s-bottom .plate.pic, .s-top .plate.pic {
+  flex: 1 1 auto; min-height: 0; width: auto; height: auto;
+  aspect-ratio: 0.59; max-width: 99%;
+}
+.s-left .plate.pic, .s-right .plate.pic {
+  flex: 0 0 auto; height: 97%; width: auto; aspect-ratio: 1.35;
+}
 .mo .ink   { fill: #2e2415; }
 .mo .tint  { fill: var(--c, #9a7434); }
 .mo .hole  { fill: var(--paper); }
@@ -1030,16 +1074,22 @@ input::placeholder { color: #6d80a0; }
 .mo .line.gr    { stroke: rgba(46,36,21,.5); stroke-width: 1.1; }
 
 .sq .fa {
-  font-size: clamp(4px, .72vh, 9px); line-height: 1.15; opacity: .5;
+  font-size: clamp(4px, calc(var(--ew) * .155), 12px); line-height: 1.2; opacity: .52;
   font-weight: 600; max-width: 100%; overflow: hidden;
 }
 .sq .nm {
   font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  font-size: clamp(4.6px, .82vh, 10px); font-weight: 700; line-height: 1.04;
+  font-size: clamp(5px, calc(var(--ew) * .215 * var(--nms, 1)), 20px);
+  font-weight: 700; line-height: 1.08;
   letter-spacing: .015em; text-transform: uppercase; max-width: 100%;
-  overflow-wrap: break-word; word-break: normal; hyphens: auto;
+  overflow-wrap: normal; word-break: normal; hyphens: none;
 }
-.s-left .nm, .s-right .nm { font-size: clamp(3.6px, .58vh, 7.4px); letter-spacing: -.015em; }
+.sq .nm span { display: inline-block; white-space: nowrap; }
+.sq .nm span + span::before { content: " "; }
+.s-left .nm, .s-right .nm {
+  font-size: clamp(4.4px, calc(var(--ew) * .25 * var(--nms, 1)), 20px);
+  letter-spacing: -.005em;
+}
 .sq .pr {
   flex: 0 0 auto; position: relative; z-index: 1; font-size: clamp(4.4px, .74vh, 9px); font-weight: 800;
   font-variant-numeric: tabular-nums; letter-spacing: .01em;
@@ -1059,10 +1109,10 @@ input::placeholder { color: #6d80a0; }
 .s-corner .plate { width: 66%; flex: 0 0 auto; height: 50%; }
 .cn-name {
   font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  font-size: clamp(5px, 1.04vh, 13px); font-weight: 800; letter-spacing: .07em; line-height: 1.05;
+  font-size: clamp(6px, calc(var(--ew) * .27), 24px); font-weight: 800; letter-spacing: .06em; line-height: 1.06;
 }
-.cn-fa   { font-size: clamp(5px, .92vh, 12px); opacity: .55; line-height: 1.1; }
-.cn-note { font-size: clamp(4px, .7vh, 9px); opacity: .55; margin-top: 1px; text-transform: lowercase; }
+.cn-fa   { font-size: clamp(5px, calc(var(--ew) * .23), 20px); opacity: .55; line-height: 1.15; }
+.cn-note { font-size: clamp(4px, calc(var(--ew) * .16), 13px); opacity: .55; margin-top: 2px; text-transform: lowercase; }
 .t-go .cn-name       { color: #1a6b3c; }
 .t-gotojail .cn-name { color: #9e2620; }
 .t-jail .cn-name     { color: #7a4e24; }
@@ -1074,10 +1124,10 @@ input::placeholder { color: #6d80a0; }
   display: flex; align-items: center; justify-content: center;
   border-bottom: 1px solid rgba(40,28,10,.5);
 }
-.s-bottom .band { top: 0; left: 0; right: 0; height: 22%; }
-.s-top .band    { bottom: 0; left: 0; right: 0; height: 22%; border-bottom: 0; border-top: 1px solid rgba(40,28,10,.5); }
-.s-left .band   { right: 0; top: 0; bottom: 0; width: 22%; border-bottom: 0; border-left: 1px solid rgba(40,28,10,.5); }
-.s-right .band  { left: 0; top: 0; bottom: 0; width: 22%; border-bottom: 0; border-right: 1px solid rgba(40,28,10,.5); }
+.s-bottom .band { top: 0; left: 0; right: 0; height: calc(var(--ew) * .36); }
+.s-top .band    { bottom: 0; left: 0; right: 0; height: calc(var(--ew) * .36); border-bottom: 0; border-top: 1px solid rgba(40,28,10,.5); }
+.s-left .band   { right: 0; top: 0; bottom: 0; width: calc(var(--ew) * .36); border-bottom: 0; border-left: 1px solid rgba(40,28,10,.5); }
+.s-right .band  { left: 0; top: 0; bottom: 0; width: calc(var(--ew) * .36); border-bottom: 0; border-right: 1px solid rgba(40,28,10,.5); }
 .blds { display: flex; align-items: center; justify-content: center; gap: 2px; }
 .s-left .blds, .s-right .blds { flex-direction: column; }
 .blds .house {
@@ -1115,6 +1165,57 @@ input::placeholder { color: #6d80a0; }
   color: #a32820; transform: rotate(-24deg); pointer-events: none;
 }
 .sq.mortgaged .mortmark { display: grid; }
+/* ── a square John painted a card for ──
+   The card is the face of the square. It sits under the colour band (so the
+   houses still have their bar) and the name and price ride on a strip of
+   parchment across the bottom, clear of the card's own painted title. */
+.sq.art { background: #101d33; }
+.sq.art .pic {
+  position: absolute; inset: 0; z-index: 0;
+  background: var(--img) center top / cover no-repeat;
+}
+.s-bottom.art .pic { top: calc(var(--ew) * .36); }
+.s-top.art    .pic { bottom: calc(var(--ew) * .36); }
+.s-left.art   .pic { right: calc(var(--ew) * .36); }
+.s-right.art  .pic { left: calc(var(--ew) * .36); }
+.sq.art.noband .pic { inset: 0; }
+
+.sq.art .cap {
+  position: absolute; bottom: 0; z-index: 2;
+  display: flex; align-items: baseline; justify-content: center; gap: 4px;
+  padding: calc(var(--ew) * .10) 3px calc(var(--ew) * .04);
+  color: #22190d; text-align: center; pointer-events: none;
+  background: linear-gradient(to top,
+    rgba(250,244,228,.96) 0%, rgba(250,244,228,.93) 58%, rgba(250,244,228,0) 100%);
+}
+.s-bottom.art .cap, .s-top.art .cap, .sq.art.noband .cap { left: 0; right: 0; }
+.s-top.art    .cap { bottom: calc(var(--ew) * .36); }
+.s-left.art   .cap { left: 0; right: calc(var(--ew) * .36); }
+.s-right.art  .cap { right: 0; left: calc(var(--ew) * .36); }
+.s-top.art.noband .cap, .s-left.art.noband .cap, .s-right.art.noband .cap {
+  bottom: 0; left: 0; right: 0;
+}
+.sq.art .cap .nm {
+  flex: 0 1 auto; min-width: 0;
+  font-size: clamp(5px, calc(var(--ew) * .2 * var(--nms, 1)), 19px);
+  text-shadow: 0 1px 0 rgba(255,252,242,.7);
+}
+.s-left.art .cap .nm, .s-right.art .cap .nm {
+  white-space: nowrap; letter-spacing: .01em;
+  font-size: clamp(5px, calc(var(--ew) * .21 * var(--nms, 1)), 19px);
+}
+/* the price rejoins the strip on the side rails instead of standing on its end */
+.sq.art .cap .pr {
+  flex: 0 0 auto; position: static; writing-mode: horizontal-tb; transform: none;
+  margin: 0; padding: 0 3px; top: auto; left: auto; right: auto;
+  font-size: clamp(4px, calc(var(--ew) * .15), 11px);
+  background: rgba(46,36,21,.11);
+}
+.sq.art .cap .pr.ghosted { background: none; }
+/* who owns it reads as a coloured edge round the picture */
+.sq.art.owned { box-shadow: inset 0 0 0 2px var(--owncol), inset 0 0 10px rgba(0,0,0,.5); }
+.sq.art .mortmark { color: #ffd0c8; text-shadow: 0 1px 3px rgba(0,0,0,.9); z-index: 3; }
+
 /* a square with its own artwork: the picture is the tile */
 .sq.has-photo {
   background: var(--photo) center / cover no-repeat, #e8dcbd;
@@ -1132,11 +1233,24 @@ input::placeholder { color: #6d80a0; }
 .mono-centre {
   grid-row: 2 / 11; grid-column: 2 / 11;
   position: relative; display: grid; place-items: center;
-  background: #0c2246;
+  background:
+    url("table-pattern.svg") repeat,
+    radial-gradient(ellipse 70% 70% at 50% 46%, #16376a 0%, #0d2449 62%, #081a31 100%);
+  background-size: 84px 84px, auto;
+  box-shadow: inset 0 0 40px rgba(0,0,0,.5);
   overflow: hidden;
 }
+/* a hairline of gold just inside the ring of squares */
+.mono-centre::before {
+  content: ""; position: absolute; inset: 3.5%;
+  border: 1px solid rgba(230,189,109,.28); border-radius: 6px;
+  pointer-events: none;
+}
 .mc-art {
-  position: absolute; inset: 0;
+  position: absolute; inset: 10%;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(240,214,154,.5), 0 0 0 3px rgba(12,28,56,.9),
+              0 0 0 4px rgba(240,214,154,.22), 0 10px 30px rgba(0,0,0,.55);
   background-image: url("bazaar-centre.jpg");
   background-image: image-set(url("bazaar-centre.webp") type("image/webp"),
                               url("bazaar-centre.jpg") type("image/jpeg"));
@@ -1406,7 +1520,9 @@ input::placeholder { color: #6d80a0; }
   .mono-bank { display: none; }
   .mono-hudright { gap: 8px; margin-left: auto; }
   .mono-wrap { flex-direction: column; align-items: stretch; gap: 8px; padding: 0 8px 8px; }
-  .mono-board { width: min(100%, 64vh); margin: 0 auto; }
+  .mono-view { width: min(100%, 64vh); margin: 0 auto; }
+  .mono-zoom { right: 4px; bottom: 4px; }
+  .mono-zoom button { min-width: 26px; height: 25px; font-size: .72rem; }
   .mono-side { flex: 1 1 auto; width: 100%; padding-bottom: 44px; }
   .mono-players { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; max-height: none; }
   .mono-dice { padding: .3rem; gap: 10px; }
@@ -1498,3 +1614,142 @@ input::placeholder { color: #6d80a0; }
 }
 .piece.on .piece-nm { color: #ffe6b4; }
 @media (max-width: 520px) { .pieces { grid-template-columns: repeat(4, 1fr); gap: 4px; } .piece-nm { font-size: .48rem; } }
+
+/* ── money changing hands ── */
+.money-fx {
+  position: fixed; inset: 0; pointer-events: none; z-index: 70; overflow: hidden;
+}
+.bill {
+  position: absolute; top: 0; left: 0;
+  width: clamp(54px, 5.6vw, 92px); aspect-ratio: 730 / 257;
+  background: var(--note) center / 100% 100% no-repeat;
+  border-radius: 3px;
+  box-shadow: 0 6px 14px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.35);
+  will-change: transform, opacity;
+}
+.cashpop {
+  position: absolute; top: 0; left: 0;
+  font-weight: 900; font-size: clamp(.8rem, 1.5vw, 1.15rem);
+  font-variant-numeric: tabular-nums; letter-spacing: .01em;
+  text-shadow: 0 2px 5px rgba(0,0,0,.8), 0 0 14px rgba(0,0,0,.5);
+  will-change: transform, opacity;
+}
+.cashpop.up   { color: #8bf5ad; }
+.cashpop.down { color: #ffa08e; }
+
+/* ── your hand: a rail down the left with your money and your deeds ──
+   Both are held the way you would hold them: piled up, the top of the pile
+   readable and the rest peeking out behind it. Hover a pile (or tap its
+   label on a phone) and it opens out so you can see everything in it. */
+.mono-hand {
+  flex: 0 0 200px; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-y: auto; overflow-x: hidden; padding: 0 2px 40px 0;
+  scrollbar-width: thin;
+}
+
+.hand-cash {
+  flex: 0 0 auto;
+  background: rgba(8,20,40,.6); border: 1px solid rgba(230,189,109,.22);
+  border-radius: 10px; padding: .3rem .5rem .45rem;
+}
+.hand-label {
+  display: flex; align-items: baseline; gap: 8px; width: 100%;
+  font-family: inherit; font-size: .56rem; letter-spacing: .18em; font-weight: 700;
+  color: var(--muted); background: none; border: 0; padding: 0 0 3px; cursor: pointer;
+  white-space: nowrap; text-align: left;
+}
+.hand-label b {
+  font-size: 1rem; letter-spacing: 0; color: var(--gold);
+  font-variant-numeric: tabular-nums; margin-left: auto;
+}
+
+.notes { display: flex; flex-direction: column; align-items: stretch; }
+.note-row {
+  position: relative; display: flex; align-items: center; gap: 7px;
+  opacity: calc(1 - var(--i) * .14);
+  transition: margin-top .2s ease, opacity .2s ease;
+}
+.note-row + .note-row { margin-top: -26px; }
+.hand-cash:hover .note-row + .note-row,
+.hand-cash.open .note-row + .note-row { margin-top: 4px; }
+.hand-cash:hover .note-row,
+.hand-cash.open .note-row { opacity: 1; }
+.note-img {
+  flex: 0 0 auto; width: 104px; aspect-ratio: 730 / 257;
+  background: var(--note) center / 100% 100% no-repeat;
+  border-radius: 2px; box-shadow: 0 2px 6px rgba(0,0,0,.55), 0 0 0 .5px rgba(0,0,0,.45);
+}
+.note-x {
+  font-size: .64rem; font-weight: 800; line-height: 1; color: #ffe6b4;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  opacity: 0; transition: opacity .2s ease;
+}
+.hand-cash:hover .note-x, .hand-cash.open .note-x { opacity: 1; }
+.notes.empty::before {
+  content: "nothing in hand"; font-size: .66rem; color: var(--muted);
+}
+
+.hand-deeds { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; }
+.hd-group {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start;
+  padding: 2px 4px 4px 9px; border-radius: 9px;
+  background: rgba(8,20,40,.5); border: 1px solid rgba(230,189,109,.14);
+}
+.hd-group::before {
+  content: ''; position: absolute; left: 0; top: 5px; bottom: 5px; width: 4px;
+  border-radius: 0 3px 3px 0; background: var(--c);
+}
+.hd-group.full { border-color: var(--c); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 35%, transparent); }
+.hd-cards { display: flex; flex-wrap: wrap; align-content: flex-start; }
+.hd-gname {
+  align-self: stretch; display: flex; gap: 6px; align-items: baseline;
+  font-family: inherit; background: none; border: 0; padding: 0 0 3px; cursor: pointer;
+  font-size: .52rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap; overflow: hidden; text-align: left;
+}
+.hd-gname i { font-style: normal; margin-left: auto; color: var(--c); filter: brightness(1.3); }
+.hd-group.full .hd-gname { color: #ffe6b4; }
+.hd {
+  position: relative; flex: 0 0 auto; width: 50px; height: 62px; padding: 0; cursor: pointer;
+  background: linear-gradient(168deg, #fbf5e6, #e8dcbd);
+  border: 1px solid #4b3a1c; border-radius: 4px; overflow: hidden;
+  display: flex; flex-direction: column; font-family: inherit;
+  opacity: calc(1 - var(--i) * .16);
+  transition: margin-left .2s ease, opacity .2s ease, transform .12s ease;
+}
+.hd + .hd { margin-left: -34px; }
+.hd-group:hover .hd + .hd, .hd-group.open .hd + .hd { margin-left: 3px; }
+.hd-group:hover .hd, .hd-group.open .hd { opacity: 1; }
+.hd:hover { filter: brightness(1.08); transform: translateY(-2px); z-index: 40 !important; }
+.hd-band { display: block; height: 8px; background: var(--c); box-shadow: inset 0 -1px 0 rgba(0,0,0,.35); }
+.hd-pic {
+  display: block; flex: 1 1 auto; min-height: 0;
+  background: var(--img) center / cover no-repeat, #d9cdb0;
+}
+.hd-nm {
+  display: block; font-size: .48rem; font-weight: 800; color: #2a2113;
+  line-height: 1.05; padding: 2px 1px; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hd-b {
+  position: absolute; top: 9px; left: 1px; right: 1px;
+  font-size: .5rem; color: #7ef0a0; letter-spacing: -1px;
+  text-shadow: 0 1px 2px rgba(0,0,0,.8);
+}
+.hd.mort { filter: grayscale(.7) brightness(.85); }
+.hd.mort .hd-nm { text-decoration: line-through; }
+.hand-empty { font-size: .68rem; color: var(--muted); padding: 2px 4px; }
+
+@media (max-width: 900px), (max-height: 640px) {
+  /* the rail lies down across the top once the board stacks */
+  .mono-hand {
+    flex: 0 0 auto; flex-direction: row; align-items: flex-start;
+    overflow-x: auto; overflow-y: hidden; padding: 0 0 6px; gap: 8px;
+  }
+  .hand-cash { min-width: 150px; }
+  .hand-deeds { flex-direction: row; }
+  .hd-cards { flex-wrap: nowrap; }
+}
+
+}
