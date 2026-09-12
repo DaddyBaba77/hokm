@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { HokmGame, shuffle, teamOf, TEAM_NAME } from './src/game.js';
 import { chooseTrump as botTrump, chooseCard as botCard, botName } from './src/bot.js';
+import { SnakesGame, MIN_PLAYERS as SNAKE_MIN, MAX_PLAYERS as SNAKE_MAX } from './src/snakes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,15 @@ app.get('/healthz', (_req, res) => res.send('ok'));
 
 const http = createServer(app);
 const io = new Server(http, { cors: { origin: '*' } });
+
+// ─────────────────────────────────────────── games
+
+// What the lobby needs to know about each game it can host.
+const GAMES = {
+  hokm:   { id: 'hokm',   name: 'Hokm',              seats: 4,         min: 4,         max: 4,         teams: true  },
+  snakes: { id: 'snakes', name: 'Snakes & Ladders',  seats: SNAKE_MAX, min: SNAKE_MIN, max: SNAKE_MAX, teams: false },
+};
+const gameMeta = (type) => GAMES[type] || GAMES.hokm;
 
 // ─────────────────────────────────────────── rooms
 
@@ -33,11 +43,13 @@ function newCode() {
   return code;
 }
 
-function createRoom(hostId) {
+function createRoom(hostId, gameType) {
+  const meta = gameMeta(gameType);
   const room = {
     code: newCode(),
     hostId,
-    seats: [null, null, null, null], // { id, name, isBot, connected }
+    gameType: meta.id,
+    seats: Array(meta.seats).fill(null), // { id, name, isBot, connected }
     sockets: new Map(), // playerId -> socket.id
     names: new Map(), // playerId -> name
     game: null,
@@ -55,12 +67,18 @@ const seatedCount = (room) => room.seats.filter(Boolean).length;
 
 function roomPayload(room, playerId) {
   const mySeat = seatOfPlayer(room, playerId);
+  const meta = gameMeta(room.gameType);
   const base = {
     code: room.code,
     isHost: room.hostId === playerId,
+    gameType: meta.id,
+    gameName: meta.name,
+    minPlayers: meta.min,
+    maxPlayers: meta.max,
+    hasTeams: meta.teams,
     mySeat: mySeat === -1 ? null : mySeat,
     seats: room.seats.map((s, i) =>
-      s ? { seat: i, name: s.name, isBot: s.isBot, connected: s.connected !== false, team: teamOf(i) } : null
+      s ? { seat: i, name: s.name, isBot: s.isBot, connected: s.connected !== false, team: meta.teams ? teamOf(i) : null } : null
     ),
     chat: room.chat.slice(-40),
     inGame: !!room.game,
@@ -77,6 +95,14 @@ function broadcast(room) {
 
 function syncPlayersIntoGame(room) {
   if (!room.game) return;
+  if (room.gameType === 'snakes') {
+    // snakes players are compacted at start, so map them one for one
+    room.game.players = room.game.players.map((p, i) => {
+      const seat = room.seats[i];
+      return seat ? { id: seat.id, name: seat.name, isBot: seat.isBot, connected: seat.connected !== false } : p;
+    });
+    return;
+  }
   room.game.players = room.seats.map((s, i) =>
     s ? { id: s.id, name: s.name, isBot: s.isBot, connected: s.connected !== false } : { id: null, name: `Seat ${i + 1}`, isBot: true, connected: false }
   );
@@ -92,6 +118,10 @@ const TRUMP_MS = 45000;
 const EMOTES = new Set(['hello', 'wellplayed', 'nice', 'oops', 'thanks', 'hurry']);
 const EMOTE_COOLDOWN_MS = 2500;
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+const ROLL_MS = 45000;
+// long enough for the client to finish hopping, climbing or being eaten
+const SNAKE_BOT_PAUSE = 2600;
 
 function advance(room) {
   const g = room.game;
@@ -120,6 +150,13 @@ function advance(room) {
     g.turnDeadline = Date.now() + g.turnTotal;
     schedule(ms, fn);
   };
+
+  if (room.gameType === 'snakes') {
+    if (g.phase !== 'playing') return;
+    if (isAuto(g.players[g.turn])) schedule(SNAKE_BOT_PAUSE, () => g.roll(g.turn));
+    else withClock(ROLL_MS, () => g.roll(g.turn));
+    return;
+  }
 
   switch (g.phase) {
     case 'hakem_draw':
@@ -189,9 +226,9 @@ io.on('connection', (socket) => {
     syncPlayersIntoGame(r);
   }
 
-  socket.on('create', ({ name, playerId: pid }) => {
+  socket.on('create', ({ name, playerId: pid, gameType }) => {
     if (!pid || !name) return fail('Missing name.');
-    const r = createRoom(pid);
+    const r = createRoom(pid, gameType);
     attach(r, pid, name.slice(0, 18));
     // Host takes seat 1 by default.
     r.seats[0] = { id: pid, name: r.names.get(pid), isBot: false, connected: true };
@@ -215,7 +252,7 @@ io.on('connection', (socket) => {
   socket.on('takeSeat', ({ seat }) => {
     const r = room();
     if (!r || r.game) return;
-    if (seat < 0 || seat > 3) return;
+    if (!(seat >= 0 && seat < r.seats.length)) return;
     if (r.seats[seat]) return fail('That seat is taken.');
     const current = seatOfPlayer(r, playerId);
     if (current !== -1) r.seats[current] = null;
@@ -265,11 +302,25 @@ io.on('connection', (socket) => {
     const r = room();
     if (!r || r.game) return;
     if (r.hostId !== playerId) return fail('Only the host can start the game.');
-    if (seatedCount(r) < 4) return fail('All four seats must be filled.');
-    r.game = new HokmGame(
-      r.seats.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot, connected: s.connected !== false }))
-    );
-    r.game.startHakemDraw();
+    const meta = gameMeta(r.gameType);
+    const seated = seatedCount(r);
+    if (seated < meta.min) {
+      return fail(meta.min === meta.max
+        ? `All ${meta.min} seats must be filled.`
+        : `You need at least ${meta.min} players.`);
+    }
+
+    // close any gaps so seat order is also turn order
+    const occupants = r.seats.filter(Boolean);
+    r.seats = r.seats.map((_, i) => occupants[i] || null);
+
+    const roster = occupants.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot, connected: s.connected !== false }));
+    if (r.gameType === 'snakes') {
+      r.game = new SnakesGame(roster);
+    } else {
+      r.game = new HokmGame(roster);
+      r.game.startHakemDraw();
+    }
     advance(r);
     broadcast(r);
   });
@@ -289,6 +340,16 @@ io.on('connection', (socket) => {
     if (!r || !r.game) return;
     const seat = seatOfPlayer(r, playerId);
     const res = r.game.playCard(seat, card);
+    if (res.error) return fail(res.error);
+    advance(r);
+    broadcast(r);
+  });
+
+  socket.on('roll', () => {
+    const r = room();
+    if (!r || !r.game || r.gameType !== 'snakes') return;
+    const seat = seatOfPlayer(r, playerId);
+    const res = r.game.roll(seat);
     if (res.error) return fail(res.error);
     advance(r);
     broadcast(r);

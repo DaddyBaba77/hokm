@@ -6,7 +6,7 @@ const SUIT_NAME = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
 const RED = new Set(['H', 'D']);
 const RANK_LABEL = { T: '10' };
 const RANK_VALUE = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const TEAM_NAME = { A: 'Azure', B: 'Crimson' };
 const POINTS_TO_WIN = 7;
 
@@ -115,6 +115,13 @@ const sound = (() => {
     emote()    { tone(700, 0.07, { type: 'triangle', gain: 0.06 }); tone(1000, 0.09, { type: 'triangle', gain: 0.05, delay: 0.06 }); },
     tick()     { tone(1400, 0.04, { type: 'square', gain: 0.03 }); },
     trump()    { tone(440, 0.18, { type: 'triangle', gain: 0.08 }); tone(660, 0.3, { type: 'triangle', gain: 0.07, delay: 0.12 }); },
+    // snakes and ladders
+    dice()     { for (let i = 0; i < 5; i++) noise(0.05, { gain: 0.05, hp: 1200, delay: i * 0.1 }); },
+    hop()      { tone(520 + Math.random() * 90, 0.05, { type: 'triangle', gain: 0.045 }); },
+    climb()    { [392, 494, 587, 740, 880].forEach((f, i) => tone(f, 0.16, { type: 'triangle', gain: 0.07, delay: i * 0.1 })); },
+    hiss()     { noise(0.42, { gain: 0.05, hp: 3800 }); },
+    bite()     { tone(130, 0.2, { type: 'square', gain: 0.1, slide: -70 }); noise(0.16, { gain: 0.1, hp: 500 });
+                 [520, 300].forEach((f, i) => tone(f, 0.1, { type: 'sawtooth', gain: 0.06, slide: -180, delay: i * 0.06 })); },
   };
 })();
 
@@ -159,7 +166,7 @@ function toast(msg) {
 }
 
 function show(screen) {
-  for (const s of ['home', 'lobby', 'table']) $(s).classList.toggle('hidden', s !== screen);
+  for (const s of ['home', 'lobby', 'table', 'snakes']) $(s).classList.toggle('hidden', s !== screen);
 }
 
 /** Screen position for a seat, relative to where I'm sitting. */
@@ -303,6 +310,7 @@ function connect() {
   socket.on('emote', ({ seat, id }) => showBubble(seat, id));
   socket.on('state', (payload) => { S = payload; render(); });
   socket.on('disconnect', () => toast('Connection lost — reconnecting…'));
+  if (window.Snakes) window.Snakes.init({ socket, sound, toast });
   return socket;
 }
 
@@ -318,10 +326,36 @@ function nameOrPrompt() {
 
 $('nameInput').value = store.name;
 
+let chosenGame = localStorage.getItem('hokm.game') || 'hokm';
+function paintGamePick() {
+  document.querySelectorAll('#gamePick .gp').forEach((b) => {
+    b.classList.toggle('on', b.dataset.game === chosenGame);
+  });
+  const snakes = chosenGame === 'snakes';
+  $('brandMain').textContent = snakes ? 'SNAKES & LADDERS' : 'HOKM';
+  $('brandSub').textContent = snakes ? '' : 'حکم';
+  $('brand').classList.toggle('wide', snakes);
+  $('tagline').textContent = snakes
+    ? 'Two to eight players. Climb the ladders, mind the snakes.'
+    : 'Four players. Two teams. One trump suit.';
+  $('createBtn').textContent = snakes ? 'Create a Snakes table' : 'Create a Hokm table';
+  document.querySelector('.rules summary').textContent = snakes ? 'How Snakes & Ladders works' : 'How Hokm works';
+  $('hokmRules').classList.toggle('hidden', snakes);
+  $('snakeRules').classList.toggle('hidden', !snakes);
+}
+document.querySelectorAll('#gamePick .gp').forEach((b) => {
+  b.onclick = () => {
+    chosenGame = b.dataset.game;
+    localStorage.setItem('hokm.game', chosenGame);
+    paintGamePick();
+  };
+});
+paintGamePick();
+
 $('createBtn').onclick = () => {
   const name = nameOrPrompt();
   if (!name) return;
-  connect().emit('create', { name, playerId: store.id });
+  connect().emit('create', { name, playerId: store.id, gameType: chosenGame });
 };
 
 $('joinForm').onsubmit = (e) => {
@@ -357,18 +391,22 @@ $('leaveBtn').onclick = () => { location.href = location.origin; };
 
 function renderLobby() {
   $('roomCode').textContent = S.code;
+  const teams = S.hasTeams !== false;
+  document.querySelector('.seatgrid').classList.toggle('no-teams', !teams);
+  $('seatList').classList.toggle('wide', S.seats.length > 4);
+
   const list = $('seatList');
   list.innerHTML = '';
   S.seats.forEach((s, i) => {
     const div = document.createElement('div');
     const team = i % 2 === 0 ? 'a' : 'b';
-    div.className = `seatcard ${team}${s && s.seat === S.mySeat ? ' me' : ''}`;
+    div.className = `seatcard ${teams ? team : 'plain'}${s && s.seat === S.mySeat ? ' me' : ''}`;
     const who = document.createElement('div');
     who.className = 'who';
     who.textContent = s ? s.name : 'Empty seat';
     const sub = document.createElement('div');
     sub.className = 'sub';
-    sub.textContent = `Seat ${i + 1} · Team ${team.toUpperCase()}`;
+    sub.textContent = teams ? `Seat ${i + 1} · Team ${team.toUpperCase()}` : `Player ${i + 1}`;
     const row = document.createElement('div');
     row.className = 'row';
 
@@ -395,14 +433,19 @@ function renderLobby() {
   });
 
   const filled = S.seats.filter(Boolean).length;
-  $('startBtn').disabled = filled < 4 || !S.isHost;
+  const min = S.minPlayers || 4;
+  const seats = S.seats.length;
+  $('startBtn').disabled = filled < min || !S.isHost;
   $('randomBtn').disabled = !S.isHost || filled < 2;
-  $('fillBtn').disabled = filled === 4;
+  $('randomBtn').textContent = teams ? 'Random teams' : 'Shuffle order';
+  $('fillBtn').disabled = filled === seats;
   $('lobbyHint').textContent = !S.isHost
-    ? 'Waiting for the host to start.'
-    : filled < 4
-      ? `${4 - filled} seat${filled === 3 ? '' : 's'} still open — wait for friends or add bots.`
-      : 'Seats 1 & 3 are Team A, seats 2 & 4 are Team B. Partners sit across.';
+    ? `Waiting for the host to start ${S.gameName || 'the game'}.`
+    : filled < min
+      ? `${min - filled} more player${min - filled === 1 ? '' : 's'} needed — wait for friends or add bots.`
+      : teams
+        ? 'Seats 1 & 3 are Team A, seats 2 & 4 are Team B. Partners sit across.'
+        : `${filled} players ready. Turn order runs down the list; up to ${seats} can play.`;
 }
 
 /* ───────────────────────── heroes ───────────────────────── */
@@ -1111,9 +1154,17 @@ window.addEventListener('resize', () => {
 
 function render() {
   if (!S) return show('home');
+
+  if (S.game && S.gameType === 'snakes') {
+    show('snakes');
+    window.Snakes.render(S);
+    return;
+  }
+
   if (!S.game) {
     show('lobby');
     renderLobby();
+    if (window.Snakes) window.Snakes.reset();
     prev = null;
     handCards.forEach((el) => el.remove());
     handCards.clear();

@@ -1,8 +1,15 @@
 # Hokm — حکم
 
-A four-player online Hokm table. You send friends a link, they type a name, and you play.
-No accounts, no installs, no app. Empty seats can be filled with bots, so the game works
-with one human or four.
+Online board and card games you host yourself. You send friends a link, they type a name,
+and you play. No accounts, no installs, no app. Empty seats can be filled with bots, so a
+game works whether you have a full table or none.
+
+Two games so far, picked on the home screen when you create a table:
+
+| Game | Players | |
+|---|---|---|
+| **Hokm** | exactly 4, in two teams | the Persian trick-taking game |
+| **Snakes & Ladders** | 2 to 8 | a fresh random board every game |
 
 ---
 
@@ -85,7 +92,23 @@ first time; allow it on private networks.
 
 ---
 
-## How a game goes
+## Snakes & Ladders
+
+Everyone starts off the board and races to 100. Roll the die, move that many squares, climb
+the ladders and get eaten by the snakes. The house rules:
+
+- You must land on 100 **exactly**. Overshoot and you bounce back off the end — roll a 5
+  from 97 and you go to 100, then back 2 to 98.
+- A **six** earns another roll. Three sixes in a row and the whole turn is forfeit: you go
+  back to where you started it.
+- The board is generated fresh for every game, so nobody can learn where the snakes are.
+
+The eight snakes are drawn as real species — a banded California mountain kingsnake, a
+saddled corn snake, a striped garter, a rattlesnake with a rattle on its tail — and landing
+on a head is a proper strike: the snake lunges, the jaws open, the board shakes, and your
+token gets dragged down the length of its body to the tail.
+
+## How a Hokm game goes
 
 1. One person opens the site, types a name, and hits **Create a table**.
 2. They hit **Copy link** and send it round. Whoever opens it types a name and lands in a seat.

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.0
+
+- The app now hosts **more than one game**. You pick which one you're creating
+  from the home screen, and the lobby adapts — four seats and teams for Hokm,
+  two to eight players for the new game.
+- Added **Snakes and Ladders**: a fresh random board every game, exact landing
+  on 100 with a bounce back off the end, a six earning another roll, and a third
+  six in a row forfeiting the whole turn.
+- The eight snakes are drawn as real species — a banded kingsnake, a saddled
+  corn snake, a striped garter, a rattlesnake with a rattle — with tapered
+  bodies, overlapping scales and slit-pupil eyes on the vipers.
+- Landing on a head is a proper strike: the snake lunges, the jaws open on the
+  gape, the board shakes, and your token is dragged down the body to the tail.
+- Tokens hop square by square, climb ladders, and bounce off 100 when a roll
+  overshoots. The die tumbles before it settles.
+
 ## 1.2.0
 
 - Retheme: the table is now a deep indigo ground woven with gold girih stars and

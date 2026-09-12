@@ -286,6 +286,7 @@ export class HokmGame {
   /** Everything every player is allowed to see. */
   publicState() {
     return {
+      gameType: 'hokm',
       phase: this.phase,
       players: this.players.map((p, i) => ({
         seat: i,

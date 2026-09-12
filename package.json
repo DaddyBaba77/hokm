@@ -1,7 +1,7 @@
 {
   "name": "hokm-online",
-  "version": "1.2.0",
-  "description": "Online 4-player Hokm (حکم) — Persian trick-taking card game with room codes and AI bots",
+  "version": "1.3.0",
+  "description": "Online multiplayer board and card games — Hokm (حکم) and Snakes & Ladders — with room codes and AI bots",
   "type": "module",
   "main": "server.js",
   "engines": {
@@ -9,9 +9,10 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node test/simulate.js 300 && node test/e2e.js",
+    "test": "node test/simulate.js 300 && node test/snakes.js && node test/e2e.js && node test/e2e-snakes.js",
     "test:rules": "node test/simulate.js 300",
-    "test:e2e": "node test/e2e.js"
+    "test:snakes": "node test/snakes.js",
+    "test:e2e": "node test/e2e.js && node test/e2e-snakes.js"
   },
   "dependencies": {
     "express": "^4.19.2",

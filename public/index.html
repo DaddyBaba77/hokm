@@ -14,13 +14,34 @@
 <!-- ══════════ Home ══════════ -->
 <section id="home" class="screen">
   <div class="panel home-card">
-    <h1 class="brand">HOKM <span>حکم</span></h1>
-    <p class="tagline">Four players. Two teams. One trump suit.</p>
+    <h1 class="brand" id="brand"><b id="brandMain">HOKM</b><span id="brandSub">حکم</span></h1>
+    <p class="tagline" id="tagline">Four players. Two teams. One trump suit.</p>
 
     <label class="field">
       <span>Your name</span>
       <input id="nameInput" maxlength="18" placeholder="e.g. John" autocomplete="nickname" />
     </label>
+
+    <span class="pick-label">Choose a game</span>
+    <div class="gamepick" id="gamePick">
+      <button type="button" class="gp on" data-game="hokm">
+        <svg class="gp-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2.5C9.4 6 4.5 8.6 4.5 13a4.3 4.3 0 0 0 6.6 3.7c-.2 1.9-.9 3.4-2.1 4.3h6c-1.2-.9-1.9-2.4-2.1-4.3A4.3 4.3 0 0 0 19.5 13c0-4.4-4.9-7-7.5-10.5z"/>
+        </svg>
+        <span class="gp-name">Hokm</span>
+        <span class="gp-sub">4 players &middot; two teams</span>
+      </button>
+      <button type="button" class="gp" data-game="snakes">
+        <svg class="gp-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 19c3.4 0 3.4-4 6.8-4s3.4 4 6.8 4" class="ln"/>
+          <path d="M4 13.5c3.4 0 3.4-4 6.8-4s3.4 4 6.8 4" class="ln"/>
+          <circle cx="19.4" cy="8.4" r="2.6"/>
+          <path d="M21.6 7.1l2.2-1.2M21.6 9.7l2.2 1.2" class="ln2"/>
+        </svg>
+        <span class="gp-name">Snakes &amp; Ladders</span>
+        <span class="gp-sub">2&ndash;8 players</span>
+      </button>
+    </div>
 
     <button id="createBtn" class="btn primary big">Create a table</button>
 
@@ -33,7 +54,7 @@
 
     <details class="rules">
       <summary>How Hokm works</summary>
-      <ul>
+      <ul id="hokmRules">
         <li>Four players in two teams; your partner sits across from you.</li>
         <li>Cards are drawn until someone turns up an Ace — that player is the <b>Hakem</b> (the ruler).</li>
         <li>The Hakem sees five cards and names the <b>Hokm</b> (trump) suit. Trump beats any other suit.</li>
@@ -41,6 +62,15 @@
         <li>Highest trump takes the trick; with no trump, the highest card of the led suit takes it. The winner leads next.</li>
         <li>First team to <b>7 tricks</b> wins the round: 1 point normally, <b>2 for a Kot</b> (7–0 by the Hakem's team), <b>3 for a Hakem Koti</b> (7–0 against the Hakem).</li>
         <li>The Hakem keeps the role if their team wins; otherwise it passes to the left. First team to <b>7 points</b> wins.</li>
+      </ul>
+      <ul id="snakeRules" class="hidden">
+        <li>Two to eight players. Everyone starts off the board and races to square <b>100</b>.</li>
+        <li>Roll the die and move that many squares.</li>
+        <li>Land on the foot of a <b>ladder</b> and you climb to its top.</li>
+        <li>Land on a <b>snake's head</b> and it bites — you slide all the way down to its tail.</li>
+        <li>You must land on 100 <b>exactly</b>. Overshoot and you bounce back off the end.</li>
+        <li>A <b>six</b> earns you another roll — but roll three sixes in a row and the whole turn is forfeit.</li>
+        <li>The board is drawn fresh every game, so nobody can learn it.</li>
       </ul>
     </details>
   </div>
@@ -116,12 +146,45 @@
   <div class="handzone" id="handzone"><div class="hand" id="hand"></div></div>
   <p id="prompt" class="prompt"></p>
 
-  <div class="util-btns">
-    <button id="soundBtn" class="icon" aria-label="Sound">♪</button>
-    <button id="logBtn" class="icon" aria-label="Table log">☰</button>
+  <div id="emoteMenu" class="emote-menu hidden"></div>
+</section>
+
+<!-- ══════════ Snakes and Ladders ══════════ -->
+<section id="snakes" class="screen hidden">
+  <header class="hud sl-hud">
+    <div class="sl-brand">SNAKES <span>&amp;</span> LADDERS</div>
+    <div class="sl-turnwrap">
+      <div class="sl-turn" id="slTurn"></div>
+      <div class="sl-streak" id="slStreak"></div>
+    </div>
+  </header>
+
+  <div class="sl-wrap">
+    <div class="sl-boardwrap">
+      <div class="sl-board" id="slBoard">
+        <div class="sl-grid" id="slGrid"></div>
+        <svg class="sl-art" id="slArt" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="sl-tokens" id="slTokens"></div>
+      </div>
+    </div>
+
+    <aside class="sl-side">
+      <div class="sl-players" id="slPlayers"></div>
+      <div class="sl-dicebox">
+        <div class="sl-die" id="slDie" aria-label="die"></div>
+        <button id="slRoll" class="btn primary big">Roll</button>
+      </div>
+    </aside>
   </div>
 
-  <div id="emoteMenu" class="emote-menu hidden"></div>
+  <div id="slOver" class="overlay hidden">
+    <div class="modal">
+      <div class="crest gold">&#9733;</div>
+      <h2 id="slOverTitle">Game over</h2>
+      <p id="slOverBody"></p>
+      <button id="slAgain" class="btn primary big">Back to the lobby</button>
+    </div>
+  </div>
 </section>
 
 <!-- ══════════ Overlays ══════════ -->
@@ -173,9 +236,15 @@
   </form>
 </div>
 
+<div class="util-btns">
+  <button id="soundBtn" class="icon" aria-label="Sound">&#9834;</button>
+  <button id="logBtn" class="icon" aria-label="Table log">&#9776;</button>
+</div>
+
 <div id="toast" class="toast hidden"></div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="snakes.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
