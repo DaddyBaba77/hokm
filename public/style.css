@@ -1402,32 +1402,62 @@ input::placeholder { color: #6d80a0; }
 .mt-who  { font-weight: 800; font-size: .82rem; }
 .mt-what { font-size: .7rem; color: var(--muted); text-transform: lowercase; }
 
-/* ── the pieces ── */
+/* ── the pieces ──
+   They stand on painted photographs, so they have to shout: a dark outline, a
+   thick ring in the player's own colour, a halo of it, and a shadow on the
+   board underneath. Everything is sized off --r so it holds up at any zoom. */
 .mono-tokens { position: absolute; inset: 0; pointer-events: none; }
 .tok {
+  --r: 34px;
   position: absolute; top: 0; left: 0;
-  transition: transform .14s cubic-bezier(.3,.9,.4,1);
-  border-radius: 50%;
+  transition: transform .16s cubic-bezier(.3,.9,.4,1);
+  border-radius: 50%; border: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 50% 82%, rgba(255,214,150,.22), transparent 70%),
-    radial-gradient(circle at 36% 24%, #4a5b7d, #131f38 76%);
-  border: 1.6px solid var(--c);
-  box-shadow: 0 2px 5px rgba(0,0,0,.65), inset 0 1px 3px rgba(255,255,255,.2);
+    radial-gradient(ellipse 80% 62% at 50% 84%, rgba(255,220,160,.28), transparent 70%),
+    radial-gradient(circle at 34% 22%, #61789f, #0c1730 78%);
+  box-shadow:
+    inset 0 0 0 calc(var(--r) * .035) rgba(255,244,220,.5),
+    0 0 0 calc(var(--r) * .05) rgba(6,12,24,.95),
+    0 0 0 calc(var(--r) * .13) var(--c),
+    0 0 0 calc(var(--r) * .155) rgba(6,12,24,.85),
+    0 0 calc(var(--r) * .55) calc(var(--r) * .09) color-mix(in srgb, var(--c) 65%, transparent),
+    0 calc(var(--r) * .15) calc(var(--r) * .26) rgba(0,0,0,.75);
 }
 .tok::after {
-  content: ""; position: absolute; inset: 5% 5% 11%;
+  content: ""; position: absolute; inset: 7% 7% 12%;
   background: var(--piece) center bottom / contain no-repeat;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,.65)) brightness(1.12) contrast(1.06);
+  filter:
+    drop-shadow(0 0 1.5px rgba(0,0,0,.95))
+    drop-shadow(0 1px 2px rgba(0,0,0,.75))
+    brightness(1.28) contrast(1.16) saturate(1.12);
 }
+/* the halo that says it is your move */
 .tok::before {
-  content: ""; position: absolute; inset: -26%; border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--c) 55%, transparent), transparent 66%);
+  content: ""; position: absolute; inset: -34%; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 70%, transparent), transparent 64%);
   opacity: 0; pointer-events: none;
 }
-.tok.turn::before { opacity: 1; animation: tokGlow 1.5s ease-in-out infinite; }
-@keyframes tokGlow { 50% { transform: scale(1.22); opacity: .55; } }
-.tok.mine { border-width: 2.2px; }
-.tok.leap { transition: transform .42s cubic-bezier(.3,-0.4,.4,1.5); }
+.tok.turn::before { opacity: 1; animation: tokGlow 1.4s ease-in-out infinite; }
+@keyframes tokGlow { 50% { transform: scale(1.3); opacity: .6; } }
+.tok.turn {
+  z-index: 3;
+  box-shadow:
+    inset 0 0 0 calc(var(--r) * .035) rgba(255,248,228,.7),
+    0 0 0 calc(var(--r) * .05) rgba(6,12,24,.95),
+    0 0 0 calc(var(--r) * .16) var(--c),
+    0 0 0 calc(var(--r) * .19) rgba(6,12,24,.9),
+    0 0 calc(var(--r) * .95) calc(var(--r) * .16) color-mix(in srgb, var(--c) 85%, transparent),
+    0 calc(var(--r) * .16) calc(var(--r) * .3) rgba(0,0,0,.8);
+}
+/* yours carries a thin gold band outside the colour ring */
+.tok.mine { z-index: 2; }
+.tok.mine::after { inset: 6% 6% 11%; }
+.tok.mine {
+  outline: calc(var(--r) * .045) solid rgba(240,206,130,.95);
+  outline-offset: calc(var(--r) * .13);
+}
+.tok.bust { display: none; }
+.tok.leap { transition: transform .5s cubic-bezier(.3,-0.4,.4,1.5); }
 
 /* ── the side panel ── */
 .mono-players { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; max-height: 34%; overflow-y: auto; }
@@ -1751,119 +1781,139 @@ input::placeholder { color: #6d80a0; }
 .cashpop.up   { color: #8bf5ad; }
 .cashpop.down { color: #ffa08e; }
 
-/* ── your hand: a rail down the left with your money and your deeds ──
-   Both are held the way you would hold them: piled up, the top of the pile
-   readable and the rest peeking out behind it. Hover a pile (or tap its
-   label on a phone) and it opens out so you can see everything in it. */
+/* ── your hand: a broad rail down the left with your money and your deeds ──
+   Everything in here is sized off --hw, the rail's own width, so the notes and
+   the deeds grow with it. Both are held the way you would hold them: piled up,
+   the top of the pile readable and the rest peeking out behind. Hover a pile
+   (or tap its label on a phone) and it opens out so you can see all of it. */
 .mono-hand {
-  flex: 0 0 200px; min-width: 0; min-height: 0;
-  display: flex; flex-direction: column; gap: 8px;
-  overflow-y: auto; overflow-x: hidden; padding: 0 2px 40px 0;
+  --hw: clamp(210px, 25vw, 430px);
+  flex: 0 0 var(--hw); min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; gap: 10px;
+  overflow-y: auto; overflow-x: hidden; padding: 0 3px 40px 0;
   scrollbar-width: thin;
 }
 
 .hand-cash {
   flex: 0 0 auto;
   background: rgba(8,20,40,.6); border: 1px solid rgba(230,189,109,.22);
-  border-radius: 10px; padding: .3rem .5rem .45rem;
+  border-radius: 12px; padding: .35rem .5rem .5rem;
 }
 .hand-label {
   display: flex; align-items: baseline; gap: 8px; width: 100%;
-  font-family: inherit; font-size: .56rem; letter-spacing: .18em; font-weight: 700;
-  color: var(--muted); background: none; border: 0; padding: 0 0 3px; cursor: pointer;
+  font-family: inherit; letter-spacing: .18em; font-weight: 700;
+  font-size: clamp(.52rem, calc(var(--hw) * .033), .82rem);
+  color: var(--muted); background: none; border: 0; padding: 0 0 4px; cursor: pointer;
   white-space: nowrap; text-align: left;
 }
 .hand-label b {
-  font-size: 1rem; letter-spacing: 0; color: var(--gold);
-  font-variant-numeric: tabular-nums; margin-left: auto;
+  font-size: clamp(.95rem, calc(var(--hw) * .095), 2.3rem);
+  letter-spacing: 0; color: var(--gold);
+  font-variant-numeric: tabular-nums; margin-left: auto; line-height: 1;
 }
 
 .notes { display: flex; flex-direction: column; align-items: stretch; }
 .note-row {
-  position: relative; display: flex; align-items: center; gap: 7px;
-  opacity: calc(1 - var(--i) * .14);
-  transition: margin-top .2s ease, opacity .2s ease;
+  position: relative;
+  opacity: calc(1 - var(--i) * .13);
+  transition: margin-top .22s ease, opacity .22s ease;
 }
-.note-row + .note-row { margin-top: -26px; }
+/* a note is 0.352 as tall as it is wide, so this leaves about a third showing */
+.note-row + .note-row { margin-top: -24%; }
 .hand-cash:hover .note-row + .note-row,
-.hand-cash.open .note-row + .note-row { margin-top: 4px; }
+.hand-cash.open .note-row + .note-row { margin-top: 2%; }
 .hand-cash:hover .note-row,
 .hand-cash.open .note-row { opacity: 1; }
 .note-img {
-  flex: 0 0 auto; width: 104px; aspect-ratio: 730 / 257;
+  display: block; width: 100%; aspect-ratio: 730 / 257;
   background: var(--note) center / 100% 100% no-repeat;
-  border-radius: 2px; box-shadow: 0 2px 6px rgba(0,0,0,.55), 0 0 0 .5px rgba(0,0,0,.45);
+  border-radius: 3px; box-shadow: 0 3px 10px rgba(0,0,0,.6), 0 0 0 .5px rgba(0,0,0,.45);
 }
 .note-x {
-  font-size: .64rem; font-weight: 800; line-height: 1; color: #ffe6b4;
+  position: absolute; right: 3%; bottom: 6%;
+  padding: .18em .5em; border-radius: 999px;
+  background: rgba(4,12,28,.82); border: 1px solid rgba(230,189,109,.5);
+  font-size: clamp(.6rem, calc(var(--hw) * .052), 1.15rem);
+  font-weight: 800; line-height: 1.1; color: #ffe6b4;
   font-variant-numeric: tabular-nums; white-space: nowrap;
-  opacity: 0; transition: opacity .2s ease;
+  opacity: 0; transition: opacity .22s ease;
 }
 .hand-cash:hover .note-x, .hand-cash.open .note-x { opacity: 1; }
 .notes.empty::before {
-  content: "nothing in hand"; font-size: .66rem; color: var(--muted);
+  content: "nothing in hand"; font-size: .72rem; color: var(--muted);
 }
 
-.hand-deeds { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; }
+.hand-deeds { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; }
 .hd-group {
   position: relative; display: flex; flex-direction: column; align-items: flex-start;
-  padding: 2px 4px 4px 9px; border-radius: 9px;
+  padding: 3px 5px 6px 11px; border-radius: 11px;
   background: rgba(8,20,40,.5); border: 1px solid rgba(230,189,109,.14);
 }
 .hd-group::before {
-  content: ''; position: absolute; left: 0; top: 5px; bottom: 5px; width: 4px;
-  border-radius: 0 3px 3px 0; background: var(--c);
+  content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 5px;
+  border-radius: 0 4px 4px 0; background: var(--c);
 }
-.hd-group.full { border-color: var(--c); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 35%, transparent); }
-.hd-cards { display: flex; flex-wrap: wrap; align-content: flex-start; }
+.hd-group.full { border-color: var(--c); box-shadow: 0 0 14px color-mix(in srgb, var(--c) 35%, transparent); }
+.hd-cards { display: flex; flex-wrap: wrap; align-content: flex-start; align-self: stretch; }
 .hd-gname {
   align-self: stretch; display: flex; gap: 6px; align-items: baseline;
-  font-family: inherit; background: none; border: 0; padding: 0 0 3px; cursor: pointer;
-  font-size: .52rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  font-family: inherit; background: none; border: 0; padding: 0 0 4px; cursor: pointer;
+  font-size: clamp(.5rem, calc(var(--hw) * .032), .8rem);
+  font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
   color: var(--muted); white-space: nowrap; overflow: hidden; text-align: left;
 }
 .hd-gname i { font-style: normal; margin-left: auto; color: var(--c); filter: brightness(1.3); }
 .hd-group.full .hd-gname { color: #ffe6b4; }
 .hd {
-  position: relative; flex: 0 0 auto; width: 50px; height: 62px; padding: 0; cursor: pointer;
+  position: relative; flex: 0 0 auto; width: 30%; aspect-ratio: 50 / 62;
+  padding: 0; cursor: pointer;
   background: linear-gradient(168deg, #fbf5e6, #e8dcbd);
-  border: 1px solid #4b3a1c; border-radius: 4px; overflow: hidden;
+  border: 1px solid #4b3a1c; border-radius: 6px; overflow: hidden;
   display: flex; flex-direction: column; font-family: inherit;
   opacity: calc(1 - var(--i) * .16);
-  transition: margin-left .2s ease, opacity .2s ease, transform .12s ease;
+  transition: margin-left .22s ease, opacity .22s ease, transform .12s ease;
 }
-.hd + .hd { margin-left: -34px; }
-.hd-group:hover .hd + .hd, .hd-group.open .hd + .hd { margin-left: 3px; }
+.hd + .hd { margin-left: -20%; }
+.hd-group:hover .hd + .hd, .hd-group.open .hd + .hd { margin-left: 1.5%; }
 .hd-group:hover .hd, .hd-group.open .hd { opacity: 1; }
-.hd:hover { filter: brightness(1.08); transform: translateY(-2px); z-index: 40 !important; }
-.hd-band { display: block; height: 8px; background: var(--c); box-shadow: inset 0 -1px 0 rgba(0,0,0,.35); }
+.hd:hover { filter: brightness(1.08); transform: translateY(-3px); z-index: 40 !important; }
+.hd-band {
+  display: block; flex: 0 0 auto; height: 13%; background: var(--c);
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,.35);
+}
 .hd-pic {
   display: block; flex: 1 1 auto; min-height: 0;
-  background: var(--img) center / cover no-repeat, #d9cdb0;
+  background: var(--img) center top / cover no-repeat, #d9cdb0;
 }
 .hd-nm {
-  display: block; font-size: .48rem; font-weight: 800; color: #2a2113;
-  line-height: 1.05; padding: 2px 1px; text-transform: uppercase;
+  display: block; flex: 0 0 auto; font-weight: 800; color: #2a2113;
+  font-size: clamp(.42rem, calc(var(--hw) * .029), .72rem);
+  line-height: 1.15; padding: 2px 2px; text-transform: uppercase;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .hd-b {
-  position: absolute; top: 9px; left: 1px; right: 1px;
-  font-size: .5rem; color: #7ef0a0; letter-spacing: -1px;
-  text-shadow: 0 1px 2px rgba(0,0,0,.8);
+  position: absolute; top: 14%; left: 2%; right: 2%;
+  font-size: clamp(.44rem, calc(var(--hw) * .03), .74rem);
+  color: #7ef0a0; letter-spacing: -1px; text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,.85);
 }
 .hd.mort { filter: grayscale(.7) brightness(.85); }
 .hd.mort .hd-nm { text-decoration: line-through; }
-.hand-empty { font-size: .68rem; color: var(--muted); padding: 2px 4px; }
+.hand-empty { font-size: .74rem; color: var(--muted); padding: 3px 5px; }
 
 @media (max-width: 900px), (max-height: 640px) {
   /* the rail lies down across the top once the board stacks */
   .mono-hand {
+    --hw: 190px;
     flex: 0 0 auto; flex-direction: row; align-items: flex-start;
     overflow-x: auto; overflow-y: hidden; padding: 0 0 6px; gap: 8px;
   }
-  .hand-cash { min-width: 150px; }
+  .hand-cash { flex: 0 0 var(--hw); }
   .hand-deeds { flex-direction: row; }
+  .hd-group { flex: 0 0 auto; width: 150px; }
   .hd-cards { flex-wrap: nowrap; }
+}
+
 }
 
 }

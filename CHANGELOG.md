@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.0
+
+- **Your hand is four times the size.** The rail down the left is as wide as the
+  screen can spare, and the money fills it — the ◈500 note is now big enough to
+  read every word on it, with the count stamped in the corner. The deed cards
+  grew with it: the painting on each one is worth looking at again.
+- **The pieces stand out on the board.** Each one is bigger and rings itself in
+  its player's colour — a dark outline, the colour band, a halo of it and a
+  shadow on the board underneath — so you can find yourself at a glance on a
+  board made of photographs. Yours carries a gold band; whoever's turn it is
+  pulses.
+
 ## 1.11.0
 
 - **Pick the dice up and shake them.** Hold the dice down and shake your mouse

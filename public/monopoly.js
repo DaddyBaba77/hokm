@@ -504,7 +504,7 @@ window.Bazaar = (function () {
       // sized off a standard edge square, not this one, so the big corners
       // don't end up with pieces large enough to hide what they are standing on
       const unit = Math.min(edgeW, edgeH);
-      const size = unit * (n > 4 ? 0.34 : 0.42);
+      const size = unit * (n > 4 ? 0.4 : 0.5);
       // pieces stand on the inner half of a square, the way they do on a real
       // board — which also keeps the name and price underneath readable
       const pull = unit * 0.26;
@@ -524,6 +524,7 @@ window.Bazaar = (function () {
         const t = tokens[seat];
         t.style.width = size + 'px';
         t.style.height = size + 'px';
+        t.style.setProperty('--r', size + 'px');   // rings and glow scale with it
         t.style.transition = instant ? 'none' : '';
         t.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px)`;
         if (instant) requestAnimationFrame(() => { t.style.transition = ''; });
