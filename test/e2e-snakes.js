@@ -14,7 +14,19 @@ const server = spawn(process.execPath, ['server.js'], {
   env: { ...process.env, PORT: String(PORT), HOKM_PACE: '0.02' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
-server.stderr.on('data', (d) => console.error('[server]', d.toString().trim()));
+server.stderr.on('data', (d) => {
+  const text = d.toString().trim();
+  // a leftover server from an aborted run would quietly answer in this one's
+  // place, and the whole suite would then be testing yesterday's build
+  if (/EADDRINUSE/.test(text)) {
+    console.error(`  \u2717 port ${PORT} is already in use \u2014 kill the stray server first`);
+    process.exit(1);
+  }
+  console.error('[server]', text);
+});
+const stop = () => { try { server.kill(); } catch {} };
+process.on('exit', stop);
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => { stop(); process.exit(1); });
 
 function makeClient(pid) {
   const sock = io(URL, { transports: ['websocket'] });

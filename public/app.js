@@ -6,7 +6,7 @@ const SUIT_NAME = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
 const RED = new Set(['H', 'D']);
 const RANK_LABEL = { T: '10' };
 const RANK_VALUE = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
-const VERSION = '1.4.0';
+const VERSION = '1.7.0';
 const TEAM_NAME = { A: 'Azure', B: 'Crimson' };
 const POINTS_TO_WIN = 7;
 
@@ -461,6 +461,53 @@ function renderLobby() {
         : `${filled} players ready. Turn order runs down the list; up to ${seats} can play.`;
 
   renderSettings();
+  renderPieces();
+}
+
+/* ─── choosing your piece (Bazaar only) ─── */
+
+let pieceMeta = null;
+function renderPieces() {
+  const box = $('piecePick');
+  const wanted = S.gameType === 'monopoly' && S.mySeat !== null;
+  box.classList.toggle('hidden', !wanted);
+  if (!wanted) return;
+  if (!pieceMeta) {
+    fetch('/bazaar-board.json')
+      .then((r) => r.json())
+      .then((m) => { pieceMeta = m.pieces || []; if (S) renderPieces(); })
+      .catch(() => {});
+    return;
+  }
+  const mine = S.seats[S.mySeat] ? S.seats[S.mySeat].piece : null;
+  const taken = new Map();
+  S.seats.forEach((seat, i) => { if (seat && seat.piece) taken.set(seat.piece, i); });
+
+  const list = $('pieceList');
+  const key = pieceMeta.map((p) => p.id + (taken.get(p.id) ?? '')).join('|') + '|' + mine;
+  if (list.dataset.key === key) return;
+  list.dataset.key = key;
+  list.innerHTML = '';
+  for (const p of pieceMeta) {
+    const holder = taken.get(p.id);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'piece' + (p.id === mine ? ' on' : '') + (holder !== undefined && holder !== S.mySeat ? ' taken' : '');
+    b.style.setProperty('--piece', `url("pieces/${p.id}.webp")`);
+    b.title = holder !== undefined && holder !== S.mySeat
+      ? `${p.name} — taken by ${S.seats[holder].name}`
+      : p.name;
+    const cap = document.createElement('span');
+    cap.className = 'piece-nm';
+    cap.textContent = p.name;
+    b.appendChild(cap);
+    if (holder === undefined || holder === S.mySeat) {
+      b.onclick = () => socket.emit('piece', { id: p.id });
+    } else {
+      b.disabled = true;
+    }
+    list.appendChild(b);
+  }
 }
 
 /* ─── table settings, for the games that have any ─── */

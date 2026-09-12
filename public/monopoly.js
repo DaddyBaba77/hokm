@@ -54,14 +54,41 @@ window.Bazaar = (function () {
 
   // ─────────────────────────────────────────── building the board
 
-  const ICONS = {
-    rail: '<svg viewBox="0 0 24 24" class="sq-ico"><path d="M5 3h14v10a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V3z"/><rect x="7.2" y="5.2" width="4" height="4" class="hole"/><rect x="12.8" y="5.2" width="4" height="4" class="hole"/><circle cx="9" cy="13.4" r="1.1" class="hole"/><circle cx="15" cy="13.4" r="1.1" class="hole"/><path d="M6 17.6l-2 3.4M18 17.6l2 3.4M8.6 18.6h6.8" class="ln"/></svg>',
-    lamp: '<svg viewBox="0 0 24 24" class="sq-ico"><path d="M12 2.6l1.9 3.2 3.6.7-2.5 2.7.5 3.7L12 11.3l-3.5 1.6.5-3.7L6.5 6.5l3.6-.7z"/><path d="M12 12.6v5.2M8.4 21h7.2" class="ln"/><ellipse cx="12" cy="18.4" rx="3.4" ry="1.1" class="hole"/></svg>',
-    water: '<svg viewBox="0 0 24 24" class="sq-ico"><path d="M12 2.4c3.6 4.6 6 7.7 6 10.6a6 6 0 0 1-12 0c0-2.9 2.4-6 6-10.6z"/><path d="M9.2 13.6a2.9 2.9 0 0 0 2.9 2.9" class="ln2"/></svg>',
-    fortune: '<svg viewBox="0 0 24 24" class="sq-ico"><path d="M8.6 8.4a3.4 3.4 0 1 1 4.6 3.2c-.9.4-1.2 1-1.2 1.9v.6"/><circle cx="12" cy="18.4" r="1.5"/></svg>',
-    treasury: '<svg viewBox="0 0 24 24" class="sq-ico"><path d="M3.4 9.2h17.2v9.6H3.4z"/><path d="M3.4 9.2l2.2-4h12.8l2.2 4" class="ln"/><rect x="10.2" y="8" width="3.6" height="5.2" class="hole"/><path d="M3.4 13.4h17.2" class="ln"/></svg>',
-    tax: '<svg viewBox="0 0 24 24" class="sq-ico"><circle cx="12" cy="12" r="7.6"/><path d="M12 7.4v9.2M9.6 9.6h4a1.9 1.9 0 0 1 0 3.8h-3.2a1.9 1.9 0 0 0 0 3.8h4" class="ln2 on-gold"/></svg>',
-    jewel: '<svg viewBox="0 0 24 24" class="sq-ico"><path d="M7.6 4h8.8l3.6 5-8 11-8-11z"/><path d="M4 9h16M9.2 9L12 20M14.8 9L12 20M7.6 4l1.6 5M16.4 4l-1.6 5" class="ln2 on-gold"/></svg>',
+  // What colour the one accent shape in each drawing is painted.
+  const TINTS = {
+    rail: '#9a7434', tax: '#7d8ea6', fortune: '#e07a2a', treasury: '#4f9bd0',
+    go: '#1f7a45', jail: '#8a5a2b', parking: '#b8862a', gotojail: '#b8302a',
+  };
+  function tintFor(sp) {
+    if (sp.type === 'street') return META.groups[sp.group].colour;
+    if (sp.type === 'utility') return sp.i === 12 ? '#e6bd6d' : '#4aa3d6';
+    if (sp.type === 'tax') return sp.tax === 200 ? '#7d8ea6' : '#b8302a';
+    return TINTS[sp.type] || '#9a7434';
+  }
+
+  // Squares John has drawn himself: the picture is the whole tile, title
+  // included, so nothing of ours goes on top of it.
+  const PHOTOS = {
+    0:  'tiles/go.jpg',
+    10: 'tiles/dungeon.jpg',
+    20: 'tiles/teahouse.jpg',
+    30: 'tiles/gotojail.jpg',
+  };
+
+  // A painting of the real place for every street and every metro station.
+  const STREET_ART = {
+    1:  'shoush',      3:  'molavi',
+    5:  'tajrish',
+    6:  'narmak',      8:  'piroozi',     9:  'sattarkhan',
+    11: 'gisha',       13: 'amir-abad',   14: 'vali-asr',
+    15: 'sadeghieh',
+    16: 'gheytarieh',  18: 'nobonyad',    19: 'vanak',
+    21: 'mirdamad',    23: 'pasdaran',    24: 'jordan',
+    25: 'azadi',
+    26: 'velenjak',    27: 'saadat-abad', 29: 'shahrak-e-gharb',
+    31: 'niavaran',    32: 'farmanieh',   34: 'zafaranieh',
+    35: 'enghelab',
+    37: 'elahieh',     39: 'fereshteh',
   };
 
   function makeCell(sp) {
@@ -71,36 +98,52 @@ window.Bazaar = (function () {
     const pos = gridAt(sp.i);
     cell.style.gridRow = pos.r;
     cell.style.gridColumn = pos.c;
+    cell.style.setProperty('--c', tintFor(sp));
+
+    if (PHOTOS[sp.i]) {
+      cell.classList.add('has-photo');
+      cell.style.setProperty('--photo', `url("${PHOTOS[sp.i]}")`);
+      cell.title = sp.name;
+      cell.appendChild(el('div', 'own'));
+      return cell;
+    }
 
     if (sp.type === 'street') {
       const band = el('div', 'band');
-      band.style.setProperty('--c', META.groups[sp.group].colour);
       band.appendChild(el('div', 'blds'));
       cell.appendChild(band);
     }
 
     const inner = el('div', 'sq-in');
+
     if (side === 'corner') {
       inner.classList.add('corner-in');
-      inner.appendChild(el('div', 'cn-name', sp.name));
+      const plate = el('div', 'plate');
+      plate.innerHTML = window.BazaarArt ? window.BazaarArt.motif(sp.i) : '';
+      inner.appendChild(plate);
       inner.appendChild(el('div', 'cn-fa', sp.fa));
-      if (sp.type === 'go') inner.appendChild(el('div', 'cn-note', `Collect ${money(200)}`));
-      if (sp.type === 'jail') inner.appendChild(el('div', 'cn-note', 'just visiting'));
-      if (sp.type === 'parking') inner.appendChild(el('div', 'cn-note', 'rest here'));
-      if (sp.type === 'gotojail') inner.appendChild(el('div', 'cn-note', 'straight there'));
+      inner.appendChild(el('div', 'cn-name', sp.name));
+      const note = { go: `Collect ${money(200)}`, jail: 'just visiting',
+        parking: 'rest here', gotojail: 'straight there' }[sp.type];
+      if (note) inner.appendChild(el('div', 'cn-note', note));
     } else {
-      const ico = sp.type === 'rail' ? ICONS.rail
-        : sp.type === 'utility' ? (sp.i === 12 ? ICONS.lamp : ICONS.water)
-        : sp.type === 'fortune' ? ICONS.fortune
-        : sp.type === 'treasury' ? ICONS.treasury
-        : sp.type === 'tax' ? (sp.tax === 200 ? ICONS.tax : ICONS.jewel)
-        : null;
-      if (ico) { const box = el('div', 'sq-icobox'); box.innerHTML = ico; inner.appendChild(box); }
-      inner.appendChild(el('div', 'nm', sp.name));
+      const txt = el('div', 'txt');
+      if (sp.fa) txt.appendChild(el('div', 'fa', sp.fa));
+      txt.appendChild(el('div', 'nm', sp.name));
+      inner.appendChild(txt);
+      const plate = el('div', 'plate');
+      if (STREET_ART[sp.i]) {
+        plate.classList.add('pic');
+        plate.style.setProperty('--img', `url("streets/${STREET_ART[sp.i]}.jpg")`);
+      } else {
+        plate.innerHTML = window.BazaarArt ? window.BazaarArt.motif(sp.i) : '';
+      }
+      inner.appendChild(plate);
       if (sp.price) inner.appendChild(el('div', 'pr', money(sp.price)));
       else if (sp.tax) inner.appendChild(el('div', 'pr', `pay ${money(sp.tax)}`));
-      else inner.appendChild(el('div', 'fa', sp.fa));
+      else inner.appendChild(el('div', 'pr ghosted', sp.type === 'fortune' ? 'take a card' : 'take a card'));
     }
+
     cell.appendChild(inner);
     cell.appendChild(el('div', 'own'));
     cell.appendChild(el('div', 'mortmark', 'MORTGAGED'));
@@ -110,20 +153,7 @@ window.Bazaar = (function () {
 
   function centrePiece() {
     const c = el('div', 'mono-centre');
-    c.innerHTML = `
-      <div class="mc-art"></div>
-      <div class="mc-deck treasury" id="mcTreasury">
-        <div class="deck-card"><span class="deck-ico">${ICONS.treasury}</span><b>TREASURY</b><i>گنجینه</i></div>
-      </div>
-      <div class="mc-deck fortune" id="mcFortune">
-        <div class="deck-card"><span class="deck-ico">${ICONS.fortune}</span><b>FORTUNE</b><i>فال</i></div>
-      </div>
-      <div class="mc-banner"><b>BAZAAR</b><i>بازار</i></div>
-      <div class="mc-dice" id="mcDice">
-        <div class="mono-die" id="die1"></div>
-        <div class="mono-die" id="die2"></div>
-      </div>
-      <div class="mc-turn" id="mcTurn"></div>`;
+    c.innerHTML = '<div class="mc-art"></div>';
     return c;
   }
 
@@ -183,6 +213,7 @@ window.Bazaar = (function () {
 
   /** Cache the pixel centre of every square, and tell the CSS how deep an edge cell is. */
   let centres = [];
+  let edgeW = 40, edgeH = 64;
   function measure() {
     if (!built) return;
     const board = $('mBoard');
@@ -193,6 +224,7 @@ window.Bazaar = (function () {
     });
     const edge = centres[1];
     if (edge && edge.w) {
+      edgeW = edge.w; edgeH = edge.h;
       board.style.setProperty('--ew', edge.w + 'px');
       board.style.setProperty('--ed', edge.h + 'px');
     }
@@ -201,16 +233,7 @@ window.Bazaar = (function () {
 
   // ─────────────────────────────────────────── tokens
 
-  const TOKEN_ART = {
-    lamp: 'M12 4.6l1.6 2.8 3.1.6-2.2 2.3.4 3.2L12 12.1l-2.9 1.4.4-3.2L7.3 8l3.1-.6z',
-    teapot: 'M5.4 10.6h9.2v4.2a4 4 0 0 1-4 4H9.4a4 4 0 0 1-4-4zM14.6 11.8h2.2a2.4 2.4 0 0 1 0 4.8h-1M8 10.6l1.4-3h1.8l1.4 3',
-    camel: 'M4.6 16.4V12c1.4 0 1.6-2.6 3.2-2.6S9.6 12 11 12s1.6-3 3.2-3 2.2 2.4 2.2 4v3.4M16.4 9.2c.4-1.4 1.2-2 2.2-2',
-    dagger: 'M12 3.4l1.8 9.2h-3.6zM8.8 12.6h6.4v1.8H8.8zM12 14.4v6.2',
-    lute: 'M9.6 19.4a4 4 0 1 0 4-4 4 4 0 0 0-4 4zM13.4 14.8l4.4-9.4',
-    scales: 'M12 4.2v15.2M6 20.2h12M5 8.6h14M5 8.6L2.6 14h4.8zM19 8.6L16.6 14h4.8z',
-    key: 'M8.4 15.6a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8zM11.6 12.2h8.2M17.4 12.2v3M19.8 12.2v3.6',
-    cat: 'M6.6 9.4l-.8-4 3.6 2.2h5.2l3.6-2.2-.8 4M6.6 9.4a6 6 0 0 0 10.8 0M8.6 12.4h.01M15.4 12.4h.01',
-  };
+  const pieceImg = (id) => `url("pieces/${id}.webp")`;
 
   function syncTokens() {
     const layer = $('mTokens');
@@ -220,7 +243,7 @@ window.Bazaar = (function () {
       tokens = S.players.map((p) => {
         const t = el('div', 'tok');
         t.style.setProperty('--c', p.colour);
-        t.innerHTML = `<svg viewBox="0 0 24 24"><path d="${TOKEN_ART[p.token] || TOKEN_ART.lamp}"/></svg>`;
+        t.style.setProperty('--piece', pieceImg(p.token || 'lion'));
         t.title = p.name;
         layer.appendChild(t);
         return t;
@@ -242,17 +265,31 @@ window.Bazaar = (function () {
       if (S && S.players[i] && S.players[i].bust) return;
       (bySquare[sq] ||= []).push(i);
     });
-    for (const [sq, list] of Object.entries(bySquare)) {
-      const c = centres[Number(sq)];
+    for (const [sqKey, list] of Object.entries(bySquare)) {
+      const c = centres[Number(sqKey)];
       if (!c) continue;
       const n = list.length;
       const cols = n <= 2 ? n : n <= 4 ? 2 : 3;
-      const size = Math.min(c.w, c.h) * (n > 4 ? 0.3 : 0.38);
+      // sized off a standard edge square, not this one, so the big corners
+      // don't end up with pieces large enough to hide what they are standing on
+      const unit = Math.min(edgeW, edgeH);
+      const size = unit * (n > 4 ? 0.34 : 0.42);
+      // pieces stand on the inner half of a square, the way they do on a real
+      // board — which also keeps the name and price underneath readable
+      const pull = unit * 0.26;
+      const sq = Number(sqKey);
+      const side = sideOf(sq);
+      const inward = side === 'bottom' ? { x: 0, y: -pull }
+        : side === 'top' ? { x: 0, y: pull }
+        : side === 'left' ? { x: pull, y: 0 }
+        : side === 'right' ? { x: -pull, y: 0 }
+        : { x: sq === 0 ? -pull : sq === 10 ? pull : sq === 20 ? pull : -pull,
+            y: sq === 0 ? -pull : sq === 10 ? -pull : sq === 20 ? pull : pull };
       list.forEach((seat, k) => {
         const col = k % cols, row = Math.floor(k / cols);
         const rows = Math.ceil(n / cols);
-        const x = c.x + (col - (cols - 1) / 2) * size * 1.05;
-        const y = c.y + (row - (rows - 1) / 2) * size * 1.05 + Math.min(c.w, c.h) * 0.08;
+        const x = c.x + inward.x + (col - (cols - 1) / 2) * size * 1.05;
+        const y = c.y + inward.y + (row - (rows - 1) / 2) * size * 1.05;
         const t = tokens[seat];
         t.style.width = size + 'px';
         t.style.height = size + 'px';
@@ -340,7 +377,7 @@ window.Bazaar = (function () {
   function animateCard(card, done) {
     const pop = $('mCard');
     $('mCardDeck').textContent = card.deck === 'fortune' ? 'FORTUNE' : 'TREASURY';
-    $('mCardFa').textContent = card.deck === 'fortune' ? 'فال' : 'گنجینه';
+    $('mCardFa').textContent = card.deck === 'fortune' ? 'بخت' : 'خزانه';
     $('mCardText').textContent = card.text;
     $('mCardWho').textContent = S.players[card.seat] ? S.players[card.seat].name : '';
     pop.className = 'mono-card ' + card.deck;
@@ -400,7 +437,7 @@ window.Bazaar = (function () {
       const row = el('div', 'mp' + (p.seat === S.turn && S.phase !== 'over' ? ' turn' : '') + (p.bust ? ' bust' : '') + (p.seat === S.seat ? ' me' : ''));
       row.style.setProperty('--c', p.colour);
       const chip = el('div', 'mp-chip');
-      chip.innerHTML = `<svg viewBox="0 0 24 24"><path d="${TOKEN_ART[p.token] || TOKEN_ART.lamp}"/></svg>`;
+      chip.style.setProperty('--piece', pieceImg(p.token || 'lion'));
       row.appendChild(chip);
       const mid = el('div', 'mp-mid');
       const nm = el('div', 'mp-name', p.name);
@@ -412,7 +449,7 @@ window.Bazaar = (function () {
       row.appendChild(mid);
       const right = el('div', 'mp-right');
       right.appendChild(el('b', null, p.bust ? '—' : money(p.cash)));
-      if (p.jailed) right.appendChild(el('span', 'mp-jail', 'in the dungeon'));
+      if (p.jailed) right.appendChild(el('span', 'mp-jail', 'in jail'));
       if (p.pardons > 0) right.appendChild(el('span', 'mp-pardon', `${p.pardons} pardon${p.pardons > 1 ? 's' : ''}`));
       row.appendChild(right);
       if (p.seat !== S.seat && !p.bust && S.seat !== null && S.phase !== 'over') {
@@ -425,7 +462,7 @@ window.Bazaar = (function () {
   }
 
   function paintTurnCard() {
-    const t = $('mcTurn');
+    const t = $('mTurn');
     if (!t) return;
     if (S.phase === 'over') {
       t.innerHTML = `<div class="mt-who">the bazaar closes</div><div class="mt-what">${S.winner !== null ? S.players[S.winner].name + ' wins' : 'no winner'}</div>`;
@@ -435,7 +472,7 @@ window.Bazaar = (function () {
     const phase = {
       roll: 'to roll', buy: 'deciding', auction: 'auction', debt: 'must raise cash', end_turn: 'finishing up',
     }[S.phase] || '';
-    t.innerHTML = `<div class="mt-who" style="color:${p.colour}">${p.name}</div><div class="mt-what">${phase}</div>`;
+    t.innerHTML = `<i style="background:${p.colour}"></i><span class="mt-who">${p.name}</span><span class="mt-what">${phase}</span>`;
   }
 
   function paintHud() {
@@ -552,7 +589,7 @@ window.Bazaar = (function () {
 
     if (S.phase === 'roll') {
       if (S.players[me].jailed) {
-        box.appendChild(el('p', 'mhint', `In the dungeon — turn ${S.players[me].jailTurns + 1} of 3.`));
+        box.appendChild(el('p', 'mhint', `In jail — turn ${S.players[me].jailTurns + 1} of 3.`));
         btn('Roll for a double', 'primary big', () => send({ type: 'roll' }));
         if (S.players[me].pardons > 0) btn('Use a pardon', 'ghost', () => send({ type: 'useCard' }));
         const f = btn(`Pay the ${money(50)} fine`, 'ghost', () => send({ type: 'payFine' }));
@@ -675,7 +712,7 @@ window.Bazaar = (function () {
       const head = el('div', 'dg-head');
       head.style.setProperty('--c', g ? g.colour : '#c9b48a');
       const full = g && list.length === g.size;
-      head.appendChild(el('span', 'dg-name', g ? g.name : key === 'rail' ? 'Caravanserais' : 'Utilities'));
+      head.appendChild(el('span', 'dg-name', g ? g.name : key === 'rail' ? 'The Metro' : 'Utilities'));
       if (full) head.appendChild(el('span', 'dg-full', 'complete'));
       wrap.appendChild(head);
       for (const i of list) {

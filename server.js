@@ -12,6 +12,7 @@ import {
   MIN_PLAYERS as MONO_MIN, MAX_PLAYERS as MONO_MAX,
   BOARD as MONO_BOARD, GROUPS as MONO_GROUPS,
   RAILS as MONO_RAILS, UTILS as MONO_UTILS, RAIL_RENT as MONO_RAIL_RENT,
+  PIECES as MONO_PIECES, TOKENS as MONO_TOKENS,
 } from './src/monopoly.js';
 import { act as monoAct, judgeOffer as monoJudge } from './src/monopoly-bot.js';
 
@@ -26,8 +27,13 @@ app.get('/healthz', (_req, res) => res.send('ok'));
 // The client draws the board from this rather than keeping its own copy, so the
 // deeds on screen can never drift from the deeds the rules use.
 app.get('/bazaar-board.json', (_req, res) => {
-  res.set('Cache-Control', 'public, max-age=600');
-  res.json({ board: MONO_BOARD, groups: MONO_GROUPS, rails: MONO_RAILS, utils: MONO_UTILS, railRent: MONO_RAIL_RENT });
+  // no caching: a deploy that changes a price must not leave a client drawing
+  // last week's board
+  res.set('Cache-Control', 'no-cache');
+  res.json({
+    board: MONO_BOARD, groups: MONO_GROUPS, rails: MONO_RAILS,
+    utils: MONO_UTILS, railRent: MONO_RAIL_RENT, pieces: MONO_PIECES,
+  });
 });
 
 const http = createServer(app);
@@ -78,6 +84,12 @@ function createRoom(hostId, gameType) {
 }
 
 const seatOfPlayer = (room, playerId) => room.seats.findIndex((s) => s && s.id === playerId);
+
+/** The first piece nobody at this table has taken. */
+function freePiece(room, exceptSeat = -1) {
+  const taken = new Set(room.seats.map((s, i) => (s && i !== exceptSeat ? s.piece : null)).filter(Boolean));
+  return MONO_TOKENS.find((id) => !taken.has(id)) || MONO_TOKENS[0];
+}
 const isAuto = (p) => !p || p.isBot || p.connected === false;
 const seatedCount = (room) => room.seats.filter(Boolean).length;
 
@@ -95,7 +107,7 @@ function roomPayload(room, playerId) {
     settings: room.settings,
     mySeat: mySeat === -1 ? null : mySeat,
     seats: room.seats.map((s, i) =>
-      s ? { seat: i, name: s.name, isBot: s.isBot, connected: s.connected !== false, team: meta.teams ? teamOf(i) : null } : null
+      s ? { seat: i, name: s.name, isBot: s.isBot, connected: s.connected !== false, piece: s.piece || null, team: meta.teams ? teamOf(i) : null } : null
     ),
     chat: room.chat.slice(-40),
     inGame: !!room.game,
@@ -116,7 +128,7 @@ function syncPlayersIntoGame(room) {
     // snakes players are compacted at start, so map them one for one
     room.game.players = room.game.players.map((p, i) => {
       const seat = room.seats[i];
-      return seat ? { id: seat.id, name: seat.name, isBot: seat.isBot, connected: seat.connected !== false } : p;
+      return seat ? { id: seat.id, name: seat.name, isBot: seat.isBot, connected: seat.connected !== false, piece: seat.piece || p.piece } : p;
     });
     return;
   }
@@ -355,7 +367,7 @@ io.on('connection', (socket) => {
     const r = createRoom(pid, gameType);
     attach(r, pid, name.slice(0, 18));
     // Host takes seat 1 by default.
-    r.seats[0] = { id: pid, name: r.names.get(pid), isBot: false, connected: true };
+    r.seats[0] = { id: pid, name: r.names.get(pid), isBot: false, connected: true, piece: freePiece(r) };
     socket.emit('joined', { code: r.code });
     broadcast(r);
   });
@@ -367,7 +379,7 @@ io.on('connection', (socket) => {
     attach(r, pid, name.slice(0, 18));
     if (seatOfPlayer(r, pid) === -1 && !r.game) {
       const free = r.seats.findIndex((s) => s === null);
-      if (free !== -1) r.seats[free] = { id: pid, name: r.names.get(pid), isBot: false, connected: true };
+      if (free !== -1) r.seats[free] = { id: pid, name: r.names.get(pid), isBot: false, connected: true, piece: freePiece(r) };
     }
     socket.emit('joined', { code: r.code });
     broadcast(r);
@@ -379,8 +391,9 @@ io.on('connection', (socket) => {
     if (!(seat >= 0 && seat < r.seats.length)) return;
     if (r.seats[seat]) return fail('That seat is taken.');
     const current = seatOfPlayer(r, playerId);
+    const held = current !== -1 ? r.seats[current].piece : null;
     if (current !== -1) r.seats[current] = null;
-    r.seats[seat] = { id: playerId, name: r.names.get(playerId), isBot: false, connected: true };
+    r.seats[seat] = { id: playerId, name: r.names.get(playerId), isBot: false, connected: true, piece: current !== -1 ? held : freePiece(r) };
     broadcast(r);
   });
 
@@ -397,7 +410,7 @@ io.on('connection', (socket) => {
     if (!r || r.game) return;
     if (r.seats[seat]) return fail('That seat is taken.');
     const taken = r.seats.filter(Boolean).map((s) => s.name);
-    r.seats[seat] = { id: `bot-${seat}-${Date.now()}`, name: botName(taken), isBot: true, connected: true };
+    r.seats[seat] = { id: `bot-${seat}-${Date.now()}`, name: botName(taken), isBot: true, connected: true, piece: freePiece(r) };
     broadcast(r);
   });
 
@@ -438,7 +451,7 @@ io.on('connection', (socket) => {
     const occupants = r.seats.filter(Boolean);
     r.seats = r.seats.map((_, i) => occupants[i] || null);
 
-    const roster = occupants.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot, connected: s.connected !== false }));
+    const roster = occupants.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot, connected: s.connected !== false, piece: s.piece }));
     if (r.gameType === 'snakes') {
       r.game = new SnakesGame(roster);
     } else if (r.gameType === 'monopoly') {
@@ -494,6 +507,17 @@ io.on('connection', (socket) => {
       if (typeof patch[k] === 'boolean') s[k] = patch[k];
     }
     if ([1000, 1500, 2000, 2500].includes(Number(patch.startCash))) s.startCash = Number(patch.startCash);
+    broadcast(r);
+  });
+
+  socket.on('piece', ({ id }) => {
+    const r = room();
+    if (!r || r.game) return;
+    const seat = seatOfPlayer(r, playerId);
+    if (seat === -1) return fail('Take a seat first.');
+    if (!MONO_TOKENS.includes(id)) return;
+    if (r.seats.some((s, i) => s && i !== seat && s.piece === id)) return fail('Somebody has taken that piece.');
+    r.seats[seat].piece = id;
     broadcast(r);
   });
 

@@ -16,7 +16,19 @@ const server = spawn(process.execPath, ['server.js'], {
   env: { ...process.env, PORT: String(PORT), HOKM_PACE: '0.01' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
-server.stderr.on('data', (d) => console.error('[server]', d.toString().trim()));
+server.stderr.on('data', (d) => {
+  const text = d.toString().trim();
+  // a leftover server from an aborted run would quietly answer in this one's
+  // place, and the whole suite would then be testing yesterday's build
+  if (/EADDRINUSE/.test(text)) {
+    console.error(`  \u2717 port ${PORT} is already in use \u2014 kill the stray server first`);
+    process.exit(1);
+  }
+  console.error('[server]', text);
+});
+const stop = () => { try { server.kill(); } catch {} };
+process.on('exit', stop);
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => { stop(); process.exit(1); });
 
 const errors = [];
 
@@ -41,7 +53,7 @@ function makeClient(pid) {
       sock.emit('act', build !== null ? { type: 'build', pos: build } : { type: 'endTurn' });
     }
   });
-  sock.on('errorMsg', (m) => { if (!/not your turn|not the moment|nothing to|only the host/i.test(m)) errors.push(m); });
+  sock.on('errorMsg', (m) => { if (!/not your turn|not the moment|nothing to|only the host|taken that piece/i.test(m)) errors.push(m); });
   return c;
 }
 
@@ -114,6 +126,16 @@ try {
   alice.sock.emit('addBot', { seat: 2 });
   alice.sock.emit('addBot', { seat: 3 });
   await waitFor(alice, (s) => s.seats.filter(Boolean).length === 4, 'bots seated');
+  // ── pieces
+  bob.sock.emit('piece', { id: 'cypress' });
+  await waitFor(bob, (s) => s.seats[1] && s.seats[1].piece === 'cypress', 'Bob picks the cypress');
+  check(alice.state.seats[1].piece === 'cypress', 'everyone at the table sees the piece change');
+  alice.sock.emit('piece', { id: 'cypress' });
+  await sleep(150);
+  check(alice.state.seats[0].piece !== 'cypress', 'a piece somebody has taken cannot be taken again');
+  check(new Set(alice.state.seats.filter(Boolean).map((x) => x.piece)).size === alice.state.seats.filter(Boolean).length,
+    'everybody at the table has a different piece');
+
   bob.sock.emit('settings', { buyMode: 'buy' });
   await sleep(150);
   check(alice.state.settings.buyMode === 'auction', 'only the host can change the settings');
@@ -134,6 +156,8 @@ try {
   check(g0.housesLeft === 32 && g0.hotelsLeft === 12, 'the bank holds 32 houses and 12 hotels');
   check(g0.phase === 'roll' && g0.turn === 0, 'the host rolls first');
   check(g0.actor === 0, 'the state says who the table is waiting on');
+  check(g0.players[1].token === 'cypress', 'the piece a player chose is the piece they play with');
+  check(new Set(g0.players.map((p) => p.token)).size === g0.players.length, 'no two pieces on the board are the same');
 
   // ── a single, fully checked turn
   const cashBefore = g0.players[0].cash;
@@ -208,10 +232,24 @@ try {
   dave.sock.close();
 
   // ── the board the client draws is the board the rules use
-  const res = await fetch(`${URL}/bazaar-board.json`);
+  // the query string keeps any proxy between us and the server out of it
+  const res = await fetch(`${URL}/bazaar-board.json?t=${Date.now()}`, { cache: 'no-store' });
   const meta = await res.json();
   check(meta.board.length === 40, 'the board endpoint serves 40 spaces');
-  check(JSON.stringify(meta.board) === JSON.stringify(BOARD), 'it serves exactly the engine’s board');
+  {
+    const served = JSON.stringify(meta.board), engine = JSON.stringify(BOARD);
+    if (served !== engine) {
+      console.error(`    [lengths ${served.length} vs ${engine.length}]`);
+      for (let i = 0; i < Math.max(served.length, engine.length); i++) {
+        if (served[i] !== engine[i]) {
+          console.error('    served:', served.slice(Math.max(0, i - 100), i + 100));
+          console.error('    engine:', engine.slice(Math.max(0, i - 100), i + 100));
+          break;
+        }
+      }
+    }
+    check(served === engine, 'it serves exactly the engine’s board');
+  }
   check(Object.keys(meta.groups).length === 8, 'and all eight colour groups');
   check(meta.board.filter((s) => s.price).length === 28, 'with 28 things to buy');
 

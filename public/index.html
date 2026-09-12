@@ -83,12 +83,12 @@
         <li>The board is drawn fresh every game, so nobody can learn it.</li>
       </ul>
       <ul id="bazaarRules" class="hidden">
-        <li>Two to eight players go round a forty-space bazaar collecting <b>◈200</b> every time they pass GO.</li>
-        <li>Land on an unclaimed quarter and you buy it — or it goes to auction, depending on the table settings.</li>
-        <li>Land on someone else's and you pay their rent. Hold every quarter of one colour and the rent doubles, and you can start building.</li>
+        <li>Two to eight players go round Tehran collecting <b>◈200</b> every time they pass GO.</li>
+        <li>Land on an unclaimed street and you buy it — or it goes to auction, depending on the table settings.</li>
+        <li>Land on someone else's and you pay their rent. Hold every street of one colour and the rent doubles, and you can start building.</li>
         <li>Four houses become a hotel. Build evenly across a colour group — no stacking one street.</li>
-        <li>Caravanserais charge more the more of the four you hold; the utilities charge a multiple of your roll.</li>
-        <li>Three doubles in a row and the guard takes you to the dungeon. Pay ◈50, use a pardon, or roll a double to get out.</li>
+        <li>Metro stations charge more the more of the four you hold; the utilities charge a multiple of your roll.</li>
+        <li>Three doubles in a row and the guard takes you to jail. Pay ◈50, use a pardon, or roll a double to get out.</li>
         <li>Short of cash? Mortgage a deed for half its price, or sell buildings back at half. Run out of both and you are ruined.</li>
         <li>The host picks how a game ends — on a clock, at the first ruin, or the last one standing.</li>
       </ul>
@@ -112,6 +112,11 @@
       <div class="teamtag team-a">Team A</div>
       <div class="teamtag team-b">Team B</div>
       <div id="seatList" class="seats"></div>
+    </div>
+
+    <div id="piecePick" class="piecepick hidden">
+      <span class="pick-label">Your piece</span>
+      <div class="pieces" id="pieceList"></div>
     </div>
 
     <details id="tableSettings" class="settings hidden">
@@ -260,6 +265,7 @@
 <section id="monopoly" class="screen hidden">
   <header class="hud mono-hud">
     <div class="mono-brand">BAZAAR <span>بازار</span></div>
+    <div class="mono-turn" id="mTurn"></div>
     <div class="mono-hudright">
       <span class="mono-pot hidden" id="mPot"></span>
       <span class="mono-bank" id="mBank"></span>
@@ -275,6 +281,10 @@
     <aside class="mono-side">
       <div class="mono-players" id="mPlayers"></div>
       <div class="mono-offer hidden" id="mOffer"></div>
+      <div class="mono-dice" id="mcDice">
+        <div class="mono-die" id="die1"></div>
+        <div class="mono-die" id="die2"></div>
+      </div>
       <div class="mono-actions" id="mActions"></div>
       <div class="mono-deeds" id="mDeeds"></div>
       <div class="mono-log" id="mLog"></div>
@@ -372,6 +382,7 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="snakes.js"></script>
+<script src="bazaar-art.js"></script>
 <script src="monopoly.js"></script>
 <script src="app.js"></script>
 </body>

@@ -95,14 +95,19 @@ first time; allow it on private networks.
 
 ## Bazaar
 
-A forty-space property game round a Persian bazaar. You go round collecting
-◈200 every time you pass GO, buying the quarters you land on and charging rent
-to everyone who lands on yours. Hold every quarter of one colour and the rent
-doubles and you can start building; four houses on a street become a hotel.
-The four caravanserais charge more the more of them one person holds, and the
-two utilities charge a multiple of whatever you rolled.
+A forty-space property game round Tehran. You go round collecting ◈200 every
+time you pass GO, buying the streets you land on and charging rent to everyone
+who lands on yours. Hold every street of one colour and the rent doubles and you
+can start building; four houses on a street become a hotel. The four metro
+stations charge more the more of them one person holds, and the two utilities
+charge a multiple of whatever you rolled.
 
-Three doubles running and the guard marches you to the dungeon — roll a double,
+The streets are real, and priced the way the city prices itself — Shoush and
+Molavi at the cheap end, up through Narmak, Gisha, Vali-Asr, Gheytarieh, Vanak,
+Mirdamad, Jordan, Velenjak and Sa'adat Abad to Niavaran, Zafaranieh, Elahieh and
+Fereshteh at ◈400.
+
+Three doubles running and the guard marches you off to jail — roll a double,
 pay ◈50 or spend a pardon to get out. Short of cash, you can mortgage a deed for
 half its price or sell buildings back at half what they cost. Run out of both and
 you are ruined, and everything you own goes to whoever you owed.
@@ -126,6 +131,22 @@ raises.
 
 Every name, card, colour and piece of art in Bazaar is our own. The mechanics are
 the ones everybody knows; nothing is borrowed from anybody's board.
+
+**The pieces.** Eight of them — lion, Azadi Tower, tea glass, sedan, pomegranate,
+rug, ewer, cypress — live in `public/pieces/` as transparent renders, and each
+player takes one in the lobby. The list and the default order are `PIECES` in
+`src/monopoly.js`; the server refuses a piece somebody at the table already
+holds, and bots take whatever is left.
+
+**The artwork.** The middle of the board and its four corners are John's own
+paintings, in `public/tiles/` and `public/bazaar-centre.jpg`, and the street paintings are
+in `public/streets/`. Any square can take a full-tile picture: add it to `PHOTOS`
+at the top of `public/monopoly.js` (`{ 20: 'tiles/teahouse.jpg' }`) and that
+picture becomes the whole tile, title and all; `STREET_ART` just below it puts a
+framed painting inside a normal tile instead. Everything else is drawn
+in `public/bazaar-art.js` — a 24×24 SVG per square, where `.ink` is the dark
+silhouette, `.tint` is painted in that square's colour group and `.hole` is cut
+back out to the paper.
 
 ## Snakes & Ladders
 

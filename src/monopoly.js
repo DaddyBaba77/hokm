@@ -21,18 +21,33 @@ export const TOKEN_COLOURS = [
   '#c98bff', '#ff9c4d', '#4de0d0', '#ff7ac0',
 ];
 
-// Little pieces, drawn in the client. Ids only here.
-export const TOKENS = ['lamp', 'teapot', 'camel', 'dagger', 'lute', 'scales', 'key', 'cat'];
+/**
+ * The eight pieces. Ids and labels only — the renders live in the client.
+ * Players pick one in the lobby; the order here is also the default by seat.
+ */
+export const PIECES = [
+  { id: 'lion',        name: 'Persian Lion',  fa: 'شیر' },
+  { id: 'azadi',       name: 'Azadi Tower',   fa: 'برج آزادی' },
+  { id: 'teaglass',    name: 'Tea Glass',     fa: 'استکان' },
+  { id: 'sedan',       name: 'Classic Sedan', fa: 'خودروی کلاسیک' },
+  { id: 'pomegranate', name: 'Pomegranate',   fa: 'انار' },
+  { id: 'rug',         name: 'Persian Rug',   fa: 'فرش' },
+  { id: 'ewer',        name: 'Ewer',          fa: 'ابریق' },
+  { id: 'cypress',     name: 'Cypress',       fa: 'سرو' },
+];
+export const TOKENS = PIECES.map((p) => p.id);
+export const isPiece = (id) => TOKENS.includes(id);
 
+// The colours are exactly as they were; only the labels have moved to Tehran.
 export const GROUPS = {
-  copper:    { name: 'Coppersmiths', colour: '#8a5a2b', build: 50,  size: 2 },
-  saffron:   { name: 'Spice Row',    colour: '#8ed6e8', build: 50,  size: 3 },
-  indigo:    { name: 'Dyers',        colour: '#d2409a', build: 100, size: 3 },
-  amber:     { name: 'Orchard',      colour: '#f2911f', build: 100, size: 3 },
-  carmine:   { name: 'Weavers',      colour: '#e02a2a', build: 150, size: 3 },
-  gold:      { name: 'Tilemakers',   colour: '#f5d90a', build: 150, size: 3 },
-  jade:      { name: 'Scholars',     colour: '#1f9755', build: 200, size: 3 },
-  lapis:     { name: 'The Citadel',  colour: '#1d5fb0', build: 200, size: 2 },
+  copper:    { name: 'The Old City',      colour: '#8a5a2b', build: 50,  size: 2 },
+  saffron:   { name: 'The Neighbourhoods', colour: '#8ed6e8', build: 50,  size: 3 },
+  indigo:    { name: 'Midtown',           colour: '#d2409a', build: 100, size: 3 },
+  amber:     { name: 'The Hills',         colour: '#f2911f', build: 100, size: 3 },
+  carmine:   { name: 'The Boulevards',    colour: '#e02a2a', build: 150, size: 3 },
+  gold:      { name: 'New Tehran',        colour: '#f5d90a', build: 150, size: 3 },
+  jade:      { name: 'The Heights',       colour: '#1f9755', build: 200, size: 3 },
+  lapis:     { name: 'North Tehran',      colour: '#1d5fb0', build: 200, size: 2 },
 };
 
 const street = (i, name, fa, group, price, rents) => ({
@@ -50,48 +65,52 @@ const util = (i, name, fa) => ({
   i, type: 'utility', name, fa, price: 150, mortgage: 75,
 });
 
-/** The 40 spaces, clockwise from GO. */
+/**
+ * The 40 spaces, clockwise from GO. The streets are real Tehran, laid out the
+ * way the city actually prices itself: the old south at the cheap end, the
+ * northern hills at the top.
+ */
 export const BOARD = [
-  { i: 0,  type: 'go',       name: 'GO',              fa: 'برو' },
-  street(1, 'Coppersmith Row', 'مسگرها', 'copper', 60, [2, 10, 30, 90, 160, 250]),
-  { i: 2,  type: 'treasury', name: 'Treasury',        fa: 'گنجینه' },
-  street(3, "Tanners' Row", 'دباغان', 'copper', 60, [4, 20, 60, 180, 320, 450]),
-  { i: 4,  type: 'tax',      name: 'Toll Gate',       fa: 'باج', tax: 200 },
-  rail(5, 'Tabriz Caravanserai', 'تبریز'),
-  street(6, 'Spice Lane', 'کوچهٔ ادویه', 'saffron', 100, [6, 30, 90, 270, 400, 550]),
-  { i: 7,  type: 'fortune',  name: 'Fortune',         fa: 'فال' },
-  street(8, 'Lantern Walk', 'فانوس', 'saffron', 100, [6, 30, 90, 270, 400, 550]),
-  street(9, 'Rosewater Street', 'گلاب', 'saffron', 120, [8, 40, 100, 300, 450, 600]),
-  { i: 10, type: 'jail',     name: 'Dungeon',         fa: 'زندان' },
-  street(11, 'Silk Alley', 'ابریشم', 'indigo', 140, [10, 50, 150, 450, 625, 750]),
-  util(12, 'The Lamplighters', 'فانوس‌داران'),
-  street(13, 'Indigo Row', 'نیل', 'indigo', 140, [10, 50, 150, 450, 625, 750]),
-  street(14, 'Turquoise Street', 'فیروزه', 'indigo', 160, [12, 60, 180, 500, 700, 900]),
-  rail(15, 'Isfahan Caravanserai', 'اصفهان'),
-  street(16, 'Saffron Market', 'زعفران', 'amber', 180, [14, 70, 200, 550, 750, 950]),
-  { i: 17, type: 'treasury', name: 'Treasury',        fa: 'گنجینه' },
-  street(18, 'Pistachio Row', 'پسته', 'amber', 180, [14, 70, 200, 550, 750, 950]),
-  street(19, 'Pomegranate Square', 'انار', 'amber', 200, [16, 80, 220, 600, 800, 1000]),
-  { i: 20, type: 'parking',  name: 'Tea House',       fa: 'چایخانه' },
-  street(21, 'Carpet Bazaar', 'فرش', 'carmine', 220, [18, 90, 250, 700, 875, 1050]),
-  { i: 22, type: 'fortune',  name: 'Fortune',         fa: 'فال' },
-  street(23, 'Mirror Hall', 'تالار آینه', 'carmine', 220, [18, 90, 250, 700, 875, 1050]),
-  street(24, 'Nightingale Street', 'بلبل', 'carmine', 240, [20, 100, 300, 750, 925, 1100]),
-  rail(25, 'Shiraz Caravanserai', 'شیراز'),
-  street(26, "Tilemakers' Court", 'کاشی', 'gold', 260, [22, 110, 330, 800, 975, 1150]),
-  street(27, 'Minaret Way', 'مناره', 'gold', 260, [22, 110, 330, 800, 975, 1150]),
-  util(28, 'The Qanat', 'قنات'),
-  street(29, 'Garden of Roses', 'باغ گل', 'gold', 280, [24, 120, 360, 850, 1025, 1200]),
-  { i: 30, type: 'gotojail', name: 'To the Dungeon',  fa: 'به زندان' },
-  street(31, 'Astrolabe Street', 'اسطرلاب', 'jade', 300, [26, 130, 390, 900, 1100, 1275]),
-  street(32, "Poets' Row", 'شاعران', 'jade', 300, [26, 130, 390, 900, 1100, 1275]),
-  { i: 33, type: 'treasury', name: 'Treasury',        fa: 'گنجینه' },
-  street(34, 'Peacock Avenue', 'طاووس', 'jade', 320, [28, 150, 450, 1000, 1200, 1400]),
-  rail(35, 'Herat Caravanserai', 'هرات'),
-  { i: 36, type: 'fortune',  name: 'Fortune',         fa: 'فال' },
-  street(37, 'Palace Square', 'میدان کاخ', 'lapis', 350, [35, 175, 500, 1100, 1300, 1500]),
-  { i: 38, type: 'tax',      name: 'Jewel Tax',       fa: 'مالیات', tax: 100 },
-  street(39, 'Gate of Gold', 'دروازهٔ طلا', 'lapis', 400, [50, 200, 600, 1400, 1700, 2000]),
+  { i: 0,  type: 'go',       name: 'GO',                fa: 'برو' },
+  street(1, 'Shoush', 'شوش', 'copper', 60, [2, 10, 30, 90, 160, 250]),
+  { i: 2,  type: 'treasury', name: 'Treasury',          fa: 'خزانه' },
+  street(3, 'Molavi', 'مولوی', 'copper', 60, [4, 20, 60, 180, 320, 450]),
+  { i: 4,  type: 'tax',      name: 'Income Tax',        fa: 'مالیات بر درآمد', tax: 200 },
+  rail(5, 'Tajrish Metro', 'مترو تجریش'),
+  street(6, 'Narmak', 'نارمک', 'saffron', 100, [6, 30, 90, 270, 400, 550]),
+  { i: 7,  type: 'fortune',  name: 'Fortune',           fa: 'بخت' },
+  street(8, 'Piroozi', 'پیروزی', 'saffron', 100, [6, 30, 90, 270, 400, 550]),
+  street(9, 'Sattarkhan', 'ستارخان', 'saffron', 120, [8, 40, 100, 300, 450, 600]),
+  { i: 10, type: 'jail',     name: 'Jail',              fa: 'زندان' },
+  street(11, 'Gisha', 'گیشا', 'indigo', 140, [10, 50, 150, 450, 625, 750]),
+  util(12, 'Tehran Electric', 'برق تهران'),
+  street(13, 'Amir Abad', 'امیرآباد', 'indigo', 140, [10, 50, 150, 450, 625, 750]),
+  street(14, 'Vali-Asr', 'ولیعصر', 'indigo', 160, [12, 60, 180, 500, 700, 900]),
+  rail(15, 'Sadeghieh Metro', 'مترو صادقیه'),
+  street(16, 'Gheytarieh', 'قیطریه', 'amber', 180, [14, 70, 200, 550, 750, 950]),
+  { i: 17, type: 'treasury', name: 'Treasury',          fa: 'خزانه' },
+  street(18, 'Nobonyad', 'نوبنیاد', 'amber', 180, [14, 70, 200, 550, 750, 950]),
+  street(19, 'Vanak', 'ونک', 'amber', 200, [16, 80, 220, 600, 800, 1000]),
+  { i: 20, type: 'parking',  name: 'Tea House',         fa: 'چای‌خانه' },
+  street(21, 'Mirdamad', 'میرداماد', 'carmine', 220, [18, 90, 250, 700, 875, 1050]),
+  { i: 22, type: 'fortune',  name: 'Fortune',           fa: 'بخت' },
+  street(23, 'Pasdaran', 'پاسداران', 'carmine', 220, [18, 90, 250, 700, 875, 1050]),
+  street(24, 'Jordan', 'جردن', 'carmine', 240, [20, 100, 300, 750, 925, 1100]),
+  rail(25, 'Azadi Metro', 'مترو آزادی'),
+  street(26, 'Velenjak', 'ولنجک', 'gold', 260, [22, 110, 330, 800, 975, 1150]),
+  street(27, "Sa'adat Abad", 'سعادت‌آباد', 'gold', 260, [22, 110, 330, 800, 975, 1150]),
+  util(28, 'Tehran Water', 'آب تهران'),
+  street(29, 'Shahrak-e Gharb', 'شهرک غرب', 'gold', 280, [24, 120, 360, 850, 1025, 1200]),
+  { i: 30, type: 'gotojail', name: 'Go to Jail',        fa: 'برو به زندان' },
+  street(31, 'Niavaran', 'نیاوران', 'jade', 300, [26, 130, 390, 900, 1100, 1275]),
+  street(32, 'Farmanieh', 'فرمانیه', 'jade', 300, [26, 130, 390, 900, 1100, 1275]),
+  { i: 33, type: 'treasury', name: 'Treasury',          fa: 'خزانه' },
+  street(34, 'Zafaranieh', 'زعفرانیه', 'jade', 320, [28, 150, 450, 1000, 1200, 1400]),
+  rail(35, 'Enghelab Metro', 'مترو انقلاب'),
+  { i: 36, type: 'fortune',  name: 'Fortune',           fa: 'بخت' },
+  street(37, 'Elahieh', 'الهیه', 'lapis', 350, [35, 175, 500, 1100, 1300, 1500]),
+  { i: 38, type: 'tax',      name: 'Luxury Tax',        fa: 'مالیات تجمل', tax: 100 },
+  street(39, 'Fereshteh', 'فرشته', 'lapis', 400, [50, 200, 600, 1400, 1700, 2000]),
 ];
 
 export const RAILS = BOARD.filter((s) => s.type === 'rail').map((s) => s.i);
@@ -109,19 +128,19 @@ export const GROUP_MEMBERS = groupMembers;
 
 export const FORTUNE = [
   { id: 'f1',  text: 'The road home is clear. Advance to GO.',                             act: { type: 'move', to: 0 } },
-  { id: 'f2',  text: 'The Gate of Gold stands open — advance there.',                      act: { type: 'move', to: 39 } },
-  { id: 'f3',  text: 'A nightingale leads you to Nightingale Street. Advance there.',      act: { type: 'move', to: 24 } },
-  { id: 'f4',  text: 'A silk merchant summons you to Silk Alley. Advance there.',          act: { type: 'move', to: 11 } },
-  { id: 'f5',  text: 'Follow the caravan road to the nearest caravanserai and pay the keeper twice the usual toll.', act: { type: 'nearest', kind: 'rail', multiply: 2 } },
-  { id: 'f6',  text: 'Dust on the horizon — ride to the nearest caravanserai and pay twice the usual toll.',         act: { type: 'nearest', kind: 'rail', multiply: 2 } },
-  { id: 'f7',  text: 'Go to the nearest waterworks or lamphouse. If it is owned, pay the owner ten times your roll.', act: { type: 'nearest', kind: 'utility', multiply: 10 } },
+  { id: 'f2',  text: 'Fereshteh is calling. Advance there.',                      act: { type: 'move', to: 39 } },
+  { id: 'f3',  text: 'Take Jordan all the way up. Advance there.',      act: { type: 'move', to: 24 } },
+  { id: 'f4',  text: 'A shopkeeper on Gisha wants a word. Advance there.',          act: { type: 'move', to: 11 } },
+  { id: 'f5',  text: 'Take the metro to the nearest station and pay the operator twice the usual fare.', act: { type: 'nearest', kind: 'rail', multiply: 2 } },
+  { id: 'f6',  text: 'The next train is already in. Ride to the nearest metro station and pay twice the usual fare.',         act: { type: 'nearest', kind: 'rail', multiply: 2 } },
+  { id: 'f7',  text: 'Go to the nearest utility. If it is owned, pay the owner ten times your roll.', act: { type: 'nearest', kind: 'utility', multiply: 10 } },
   { id: 'f8',  text: 'Your share of the season’s trade — collect 50.',                act: { type: 'cash', amount: 50 } },
   { id: 'f9',  text: 'A magistrate owes you a favour. Keep this card until you need it.',  act: { type: 'jailFree' }, keep: true },
   { id: 'f10', text: 'You take a wrong turn in the alleys. Go back three spaces.',         act: { type: 'moveBack', n: 3 } },
-  { id: 'f11', text: 'The guard has been watching you. Go straight to the dungeon.',       act: { type: 'jail' } },
+  { id: 'f11', text: 'The guard has been watching you. Go straight to jail.',       act: { type: 'jail' } },
   { id: 'f12', text: 'The winter rains come in. Pay 25 for every house and 100 for every hotel you own.', act: { type: 'repairs', house: 25, hotel: 100 } },
   { id: 'f13', text: 'You are fined 15 for blocking the thoroughfare.',                    act: { type: 'cash', amount: -15 } },
-  { id: 'f14', text: 'Ride out to Tabriz Caravanserai.',                                   act: { type: 'move', to: 5 } },
+  { id: 'f14', text: 'Ride the line out to Tajrish Metro.',                                   act: { type: 'move', to: 5 } },
   { id: 'f15', text: 'You are named head of the guild and must stand the feast — pay every player 50.', act: { type: 'each', amount: -50 } },
   { id: 'f16', text: 'An old loan is repaid at last — collect 150.',                       act: { type: 'cash', amount: 150 } },
 ];
@@ -131,8 +150,8 @@ export const TREASURY = [
   { id: 't2',  text: 'The money changer miscounts in your favour — collect 200.',          act: { type: 'cash', amount: 200 } },
   { id: 't3',  text: 'The physician’s fee — pay 50.',                                 act: { type: 'cash', amount: -50 } },
   { id: 't4',  text: 'You sell your share in a caravan — collect 50.',                     act: { type: 'cash', amount: 50 } },
-  { id: 't5',  text: 'A scribe finds an error in your sentence. Keep this card until you need it.', act: { type: 'jailFree' }, keep: true },
-  { id: 't6',  text: 'The night watch takes you in. Go to the dungeon.',                   act: { type: 'jail' } },
+  { id: 't5',  text: 'A clerk finds an error in your sentence. Keep this card until you need it.', act: { type: 'jailFree' }, keep: true },
+  { id: 't6',  text: 'The night watch takes you in. Go to jail.',                   act: { type: 'jail' } },
   { id: 't7',  text: 'Your pilgrimage fund matures — collect 100.',                        act: { type: 'cash', amount: 100 } },
   { id: 't8',  text: 'The toll gate overcharged you — collect 20 back.',                   act: { type: 'cash', amount: 20 } },
   { id: 't9',  text: 'It is your name day. Collect 10 from every player.',                 act: { type: 'each', amount: 10 } },
@@ -328,7 +347,7 @@ export class MonopolyGame {
     if (isDouble) {
       this.doubles += 1;
       if (this.doubles === 3) {
-        this.note(`${this.name(seat)} rolls a third double — straight to the dungeon.`);
+        this.note(`${this.name(seat)} rolls a third double — straight to jail.`);
         this._sendToJail(seat);
         this._endTurn();
         return { ok: true };
@@ -352,22 +371,22 @@ export class MonopolyGame {
     this.jailTurns[seat] += 1;
     if (this.jailTurns[seat] >= 3) {
       this.note(`${who} serves the third turn, pays the ${JAIL_FINE} fine and leaves.`);
-      const res = this.charge(seat, JAIL_FINE, null, 'dungeon fine', { kind: 'jailMove', seat, steps: d1 + d2 });
+      const res = this.charge(seat, JAIL_FINE, null, 'jail fine', { kind: 'jailMove', seat, steps: d1 + d2 });
       this.jailed[seat] = false;
       this.jailTurns[seat] = 0;
       if (!res.ok) return { ok: true };
       return this._advanceBy(seat, d1 + d2, { double: false, fromJail: true });
     }
-    this.note(`${who} stays in the dungeon.`);
+    this.note(`${who} stays in jail.`);
     this._endTurn();
     return { ok: true };
   }
 
   /** Pay the fine and get out now. */
   payFine(seat) {
-    if (seat !== this.turn || !this.jailed[seat]) return { error: 'You are not in the dungeon.' };
+    if (seat !== this.turn || !this.jailed[seat]) return { error: 'You are not in jail.' };
     if (this.phase !== 'roll') return { error: 'Not the moment.' };
-    const res = this.charge(seat, JAIL_FINE, null, 'dungeon fine', { kind: 'roll' });
+    const res = this.charge(seat, JAIL_FINE, null, 'jail fine', { kind: 'roll' });
     if (!res.ok) return { ok: true };
     this.jailed[seat] = false;
     this.jailTurns[seat] = 0;
@@ -377,7 +396,7 @@ export class MonopolyGame {
 
   /** Spend a kept pardon. */
   useJailCard(seat) {
-    if (seat !== this.turn || !this.jailed[seat]) return { error: 'You are not in the dungeon.' };
+    if (seat !== this.turn || !this.jailed[seat]) return { error: 'You are not in jail.' };
     if (this.jailFree[seat] < 1) return { error: 'You have no pardon to use.' };
     this.jailFree[seat] -= 1;
     // hand the card back to the bottom of whichever deck it came from
@@ -449,7 +468,7 @@ export class MonopolyGame {
         break;
 
       case 'gotojail':
-        this.note(`${who} is marched to the dungeon.`);
+        this.note(`${who} is marched off to jail.`);
         this._sendToJail(seat);
         this._endTurn();
         return { ok: true };
@@ -1078,7 +1097,7 @@ export class MonopolyGame {
         isBot: p.isBot,
         connected: p.connected !== false,
         colour: TOKEN_COLOURS[i % TOKEN_COLOURS.length],
-        token: TOKENS[i % TOKENS.length],
+        token: p.piece && TOKENS.includes(p.piece) ? p.piece : TOKENS[i % TOKENS.length],
         cash: this.cash[i],
         pos: this.pos[i],
         jailed: this.jailed[i],

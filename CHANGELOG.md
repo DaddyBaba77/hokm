@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.7.0
+
+- **Eight playing pieces, and you pick yours.** The Persian Lion, the Azadi
+  Tower, a tea glass, a classic sedan, a pomegranate, a rolled Persian rug, an
+  ewer and a cypress — cut out of John's render as little metal miniatures.
+- A piece picker sits in the lobby: tap one to take it, and the ones other people
+  have already taken are hatched out. Bots take what's left.
+- The pieces show up ringed in your colour on the board and beside your name in
+  the player list, so at a glance you still know who is who even at phone size.
+
+## 1.6.0
+
+- **The board is Tehran now.** All twenty-two streets are real places, laid out
+  the way the city prices itself — Shoush and Molavi at the cheap end, then the
+  neighbourhoods, midtown, the hills and the boulevards, up through Velenjak and
+  Sa'adat Abad to Niavaran, Zafaranieh, Elahieh and **Fereshteh** at ◈400.
+- Every street and every station carries a painting of the real place.
+- The four railroads are the **metro**: Tajrish, Sadeghieh, Azadi and Enghelab.
+  The utilities are **Tehran Electric** and **Tehran Water**, and the two taxes
+  are Income Tax and Luxury Tax.
+- The colour groups kept their exact colours and picked up city names: The Old
+  City, The Neighbourhoods, Midtown, The Hills, The Boulevards, New Tehran, The
+  Heights and North Tehran.
+- The corner is called Jail rather than the dungeon, matching the artwork, and
+  the Fortune cards that named the old invented streets now name real ones.
+
+## 1.5.0
+
+- **The Bazaar board is properly dressed.** Every square is aged parchment with a
+  hairline frame, a Persian name above its English one, and a drawing of its own
+  — coppersmiths' pots, a loom, dye vats, a tiled dome, a minaret, an astrolabe,
+  a peacock, a caravanserai gate, thirty in all, each tinted with its own colour
+  group.
+- **The middle of the board is John's painting of Tehran**, and the four corners
+  — GO, the dungeon, the tea house and the walk to the dungeon — are his too.
+- Nothing on the board is printed sideways any more. With pictures on it, an
+  upside-down minaret reads as a mistake, so every square sits upright and the
+  side rails put the name and the picture next to each other instead.
+- The decks are named the way John names them: **بخت / Fortune** and
+  **خزانه / Treasury**.
+- The dice moved off the painting and into the side panel, next to Roll.
+- Fixed: a long list of deeds squashed itself instead of scrolling.
+- Fixed: the board data is no longer cached by the browser, so a deploy that
+  changes a price can't leave anyone playing off last week's board.
+- The end-to-end tests now refuse to run against a stray server left over from an
+  aborted run, instead of quietly testing an old build.
+
 ## 1.4.0
 
 - **A third game: Bazaar.** A forty-space property-trading game for two to eight
