@@ -97,6 +97,12 @@ first time; allow it on private networks.
 Cards are then dealt one at a time until somebody turns up an Ace — that player is the Hakem.
 They see five cards, call the trump suit, the rest of the deal goes out, and the Hakem leads.
 
+Each team is a side with a name — **Azure** and **Crimson** — with its own crest and banner across
+the top of the screen, showing both partners, the points won as a row of seven pips, and the tricks
+taken this round. Every trick a team wins goes face-down onto that team's pile, so the race to seven
+is something you watch stack up. The last four cards played stay visible in the top-right corner,
+with the winning card ringed in gold.
+
 **Playing a card:** drag it up out of your hand and onto the table, or just tap it — both work.
 Cards you're allowed to play glow gold; the rest dim out, and a card you can't legally play shakes
 if you grab it. When it's your turn a ring burns down around your portrait; if it runs out the

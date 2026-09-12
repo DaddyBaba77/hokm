@@ -6,6 +6,7 @@ const SUIT_NAME = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
 const RED = new Set(['H', 'D']);
 const RANK_LABEL = { T: '10' };
 const RANK_VALUE = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
+const VERSION = '1.1.0';
 const TEAM_NAME = { A: 'Azure', B: 'Crimson' };
 const POINTS_TO_WIN = 7;
 
@@ -231,12 +232,8 @@ function pilePoint(kind) {
       Math.max(6, Math.min(b.height - block - 6, hero.top - b.top + hero.height / 2 - block / 2))
     );
   }
-  // just above the opponent on my left
-  const hero = document.querySelector('.hero.pos-left').getBoundingClientRect();
-  return at(
-    Math.max(10, hero.left - b.left + hero.width / 2 - pw / 2),
-    Math.max(6, hero.top - b.top - block - 12)
-  );
+  // top-left corner: well clear of the left player's emote bubble
+  return at(10, 8);
 }
 
 const myTeamOf = (g) => (g.seat === null ? 'A' : g.players[g.seat].team);
@@ -261,6 +258,27 @@ function renderPiles(g, freshTeam = null) {
       ).join('') +
       `</div><b>${TEAM_NAME[team]} · ${n}/7</b>`;
   }
+}
+
+/** The four cards from the trick just played, in the order they were laid down. */
+function renderLastTrick(g) {
+  const panel = $('lastTrick');
+  const lt = g.lastTrick;
+  if (!lt || g.phase === 'hakem_draw' || g.phase === 'choosing_trump') {
+    panel.classList.add('hidden');
+    return;
+  }
+  panel.classList.remove('hidden');
+  const box = $('ltCards');
+  box.innerHTML = '';
+  lt.plays.forEach((p) => {
+    const el = cardEl(p.card);
+    el.classList.toggle('win', p.seat === lt.winner);
+    el.title = g.players[p.seat] ? g.players[p.seat].name : '';
+    box.appendChild(el);
+  });
+  const who = g.players[lt.winner];
+  $('ltWho').textContent = who ? `${who.seat === g.seat ? 'You' : who.name} took it` : '';
 }
 
 /** Which card takes the trick as it stands — same rule the server uses. */
@@ -763,6 +781,7 @@ function collectTrick(g, lastTrick) {
     if (cur) {
       pileShown = { ...cur.roundTricks };
       renderPiles(cur, winningTeam); // the pile gains its card as the trick lands
+      renderLastTrick(cur);
       renderBoard(cur);
     }
   }, 600);
@@ -909,7 +928,12 @@ function renderBanners(g, scoredTeam = null) {
          <div class="pips">${Array.from({ length: POINTS_TO_WIN }, (_, i) =>
            `<i class="${i < pts ? 'on' : ''}${scoredTeam === team && i === pts - 1 ? ' just' : ''}"></i>`).join('')}</div>
        </div>
-       <div class="bscore"><b>${pts}</b><span>${g.roundTricks[team]} tricks</span></div>`;
+       <div class="bstats">
+         <div class="stat pts"><b>${pts}</b><span>POINTS</span></div>
+         <div class="stat trk${g.roundTricks[team] >= 5 ? ' hot' : ''}">
+           <b>${g.roundTricks[team]}</b><i>/7</i><span>TRICKS</span>
+         </div>
+       </div>`;
   }
 }
 
@@ -927,6 +951,7 @@ function renderTable() {
 
   renderHeroes(g);
   if (!collecting) renderPiles(g);
+  if (!collecting) renderLastTrick(g);
   placeEmoteButton();
 
   if (g.phase === 'hakem_draw') {
@@ -1067,6 +1092,7 @@ $('soundBtn').onclick = () => {
   $('soundBtn').classList.toggle('off', !on);
 };
 $('soundBtn').classList.toggle('off', !sound.on);
+$('verTag').textContent = `v${VERSION}`;
 
 let resizeTimer;
 window.addEventListener('resize', () => {

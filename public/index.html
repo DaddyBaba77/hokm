@@ -78,10 +78,6 @@
   <header class="hud">
     <div class="banner a" id="bannerA"></div>
     <div class="banner b" id="bannerB"></div>
-    <div class="hud-btns">
-      <button id="soundBtn" class="icon" aria-label="Sound">♪</button>
-      <button id="logBtn" class="icon" aria-label="Table log">☰</button>
-    </div>
   </header>
 
   <div class="board" id="board">
@@ -106,6 +102,12 @@
     <div class="pile b" id="pileB"></div>
     <button id="emoteBtn" class="emote-btn" aria-label="Emote">☺</button>
 
+    <div class="lasttrick hidden" id="lastTrick">
+      <span class="lt-label">LAST TRICK</span>
+      <div class="lt-cards" id="ltCards"></div>
+      <span class="lt-who" id="ltWho"></span>
+    </div>
+
     <div class="slots" id="slots"></div>
     <div class="fx" id="fx"></div>
     <div class="msg-banner hidden" id="banner"></div>
@@ -113,6 +115,11 @@
 
   <div class="handzone" id="handzone"><div class="hand" id="hand"></div></div>
   <p id="prompt" class="prompt"></p>
+
+  <div class="util-btns">
+    <button id="soundBtn" class="icon" aria-label="Sound">♪</button>
+    <button id="logBtn" class="icon" aria-label="Table log">☰</button>
+  </div>
 
   <div id="emoteMenu" class="emote-menu hidden"></div>
 </section>
@@ -153,7 +160,7 @@
 
 <div id="logPanel" class="logpanel hidden">
   <div class="logpanel-head">
-    <b>Table log</b>
+    <b>Table log <small id="verTag" class="vertag"></small></b>
     <span class="logpanel-btns">
       <button id="leaveBtn" class="btn ghost small">Leave table</button>
       <button id="logClose" class="btn ghost small">Close</button>

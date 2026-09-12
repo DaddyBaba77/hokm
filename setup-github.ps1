@@ -1,22 +1,23 @@
 <#
   Hokm — one-time GitHub setup.
 
-  Run it from this folder:
+  FIRST TIME - create an empty repo on GitHub, then:
+
+      powershell -ExecutionPolicy Bypass -File .\setup-github.ps1 -RepoUrl https://github.com/you/hokm.git
+
+  EVERY TIME AFTER - to publish changes, just:
 
       powershell -ExecutionPolicy Bypass -File .\setup-github.ps1
 
-  That does the safety checks and makes the first commit, then stops and tells
-  you what to do next. Once you've created the empty repo on GitHub, run it
-  again with the repo's URL to connect and push:
-
-      powershell -ExecutionPolicy Bypass -File .\setup-github.ps1 -RepoUrl https://github.com/you/hokm.git
+  It reuses the remote already configured and names the commit after the
+  version in package.json. Pass -Message "..." to say something else.
 
   It refuses to do anything it isn't sure about: it will not touch another
   repository, will not commit node_modules, and will not push without you
   typing PUSH first.
 #>
 [CmdletBinding()]
-param([string]$RepoUrl)
+param([string]$RepoUrl, [string]$Message)
 
 # git reports perfectly normal things on stderr ("not a git repository", push
 # progress, CRLF warnings). Windows PowerShell 5.1 turns those into fatal errors
@@ -85,10 +86,14 @@ Head "1. Checking the folder"
 if (-not (Test-Path -LiteralPath (Join-Path $root 'package.json'))) {
   Fail "No package.json here, so this isn't the Hokm folder." "cd into the folder that contains server.js, then run this again."
 }
-if ((Get-Content -LiteralPath (Join-Path $root 'package.json') -Raw) -notmatch 'hokm-online') {
+$pkg = Get-Content -LiteralPath (Join-Path $root 'package.json') -Raw
+if ($pkg -notmatch 'hokm-online') {
   Fail "The package.json here belongs to a different project." "Run this from the Hokm folder only."
 }
-Ok "This is the Hokm project."
+$version = ''
+if ($pkg -match '"version"\s*:\s*"([^"]+)"') { $version = $Matches[1] }
+if (-not $Message) { $Message = if ($version) { "Hokm v$version" } else { "Hokm update" } }
+Ok ("This is the Hokm project" + $(if ($version) { ", version $version." } else { "." }))
 
 # ── 2. git present and configured ─────────────────────────────────────────────
 Head "2. Checking git"
@@ -156,13 +161,22 @@ if ($staged.Count -eq 0) {
   if ($staged.Count -gt 24) { Write-Host "         ... and $($staged.Count - 24) more" -ForegroundColor DarkGray }
 
   Head "6. Committing"
-  if ((GitDo 'commit' '-q' '-m' 'Hokm - four-player online Hokm') -ne 0) { Fail "git commit failed." }
-  Ok "Committed."
+  if ((GitDo 'commit' '-q' '-m' $Message) -ne 0) { Fail "git commit failed." }
+  Ok "Committed as `"$Message`""
 }
 $null = GitDo 'branch' '-M' 'main'
 
 # ── 7. connect to GitHub ──────────────────────────────────────────────────────
 Head "7. GitHub"
+if (-not $RepoUrl) {
+  # already connected? then this is a routine publish, not first-time setup
+  $known = GitOut 'remote' 'get-url' 'origin'
+  if ($known) {
+    $RepoUrl = $known
+    $script:routinePublish = $true
+    Note "Using the remote this folder is already connected to."
+  }
+}
 if (-not $RepoUrl) {
   Write-Host ""
   Write-Host "  Everything is committed locally. Nothing has left your PC." -ForegroundColor Green
@@ -200,8 +214,12 @@ Write-Host ""
 Write-Host "  About to push this folder to:" -ForegroundColor Yellow
 Write-Host "      $RepoUrl" -ForegroundColor White
 Write-Host ""
-Write-Host "  Make sure that is the NEW empty repo you just created," -ForegroundColor Yellow
-Write-Host "  and not any other project of yours." -ForegroundColor Yellow
+if ($routinePublish) {
+  Write-Host "  This is the repo this folder is already published to." -ForegroundColor Gray
+} else {
+  Write-Host "  Make sure that is the NEW empty repo you just created," -ForegroundColor Yellow
+  Write-Host "  and not any other project of yours." -ForegroundColor Yellow
+}
 Write-Host ""
 $answer = Read-Host "  Type PUSH to continue (anything else cancels)"
 if ($answer -cne 'PUSH') { Line; Note "Cancelled. Nothing was pushed."; Line; exit 0 }

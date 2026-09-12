@@ -1,6 +1,6 @@
 {
   "name": "hokm-online",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Online 4-player Hokm (حکم) — Persian trick-taking card game with room codes and AI bots",
   "type": "module",
   "main": "server.js",

@@ -129,20 +129,22 @@ input::placeholder { color: #6d8279; }
 /* ───────── HUD ───────── */
 .hud {
   position: relative; z-index: 30;
-  display: grid; grid-template-columns: 1fr 1fr auto; align-items: stretch; gap: 8px;
+  display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 8px;
   padding: 6px 8px; padding-top: max(6px, env(safe-area-inset-top));
   background: linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.2));
   border-bottom: 1px solid rgba(230,189,109,.2);
 }
-.hud-btns { display: flex; gap: 5px; align-items: center; }
+.util-btns {
+  position: fixed; right: 10px; bottom: max(8px, env(safe-area-inset-bottom));
+  display: flex; gap: 5px; z-index: 45;
+}
 
 /* ───────── team banners ───────── */
 .banner {
   --tc: var(--teamA); --tc-soft: rgba(111,195,255,.2); --tc-deep: rgba(30,90,140,.35);
   position: relative; display: grid; grid-template-columns: auto 1fr auto;
-  align-items: center; gap: 8px; padding: 5px 9px 5px 6px;
-  border-radius: 11px; min-width: 0; overflow: hidden;
-  max-width: 430px; width: 100%; justify-self: start;
+  align-items: center; gap: 10px; padding: 6px 10px 6px 7px;
+  border-radius: 12px; min-width: 0; overflow: hidden; width: 100%;
   background: linear-gradient(100deg, var(--tc-soft), var(--tc-deep) 55%, rgba(0,0,0,.35));
   border: 1px solid rgba(255,255,255,.09);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 2px 10px rgba(0,0,0,.3);
@@ -151,7 +153,7 @@ input::placeholder { color: #6d8279; }
   --tc: var(--teamB); --tc-soft: rgba(255,160,114,.2); --tc-deep: rgba(150,70,35,.35);
   grid-template-columns: auto 1fr auto;
   background: linear-gradient(260deg, var(--tc-soft), var(--tc-deep) 55%, rgba(0,0,0,.35));
-  direction: rtl; justify-self: end;
+  direction: rtl;
 }
 .banner.b > * { direction: ltr; }
 .banner.b .bmain { text-align: right; }
@@ -165,7 +167,7 @@ input::placeholder { color: #6d8279; }
 }
 .banner.leading .bscore b { text-shadow: 0 0 14px var(--tc); }
 
-.crest { width: 30px; height: 34px; flex: 0 0 auto; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+.crest { width: 40px; height: 46px; flex: 0 0 auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,.55)); }
 .crest .shield { fill: var(--tc); fill-opacity: .28; stroke: var(--tc); stroke-width: 2.2; }
 .crest .charge { fill: var(--tc); }
 .banner.mine .crest .shield { fill-opacity: .45; stroke: var(--gold); }
@@ -175,31 +177,48 @@ input::placeholder { color: #6d8279; }
 .btop { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .banner.b .btop { justify-content: flex-end; }
 .bname {
-  font-size: .74rem; font-weight: 800; letter-spacing: .16em; color: var(--tc);
-  text-shadow: 0 1px 4px rgba(0,0,0,.6); white-space: nowrap;
+  font-size: .95rem; font-weight: 800; letter-spacing: .18em; color: var(--tc);
+  text-shadow: 0 1px 5px rgba(0,0,0,.7); white-space: nowrap;
 }
 .youtag {
-  font-size: .5rem; font-weight: 800; letter-spacing: .12em; color: #2b1e07;
-  background: var(--gold); border-radius: 4px; padding: 1px 4px; flex: 0 0 auto;
+  font-size: .55rem; font-weight: 800; letter-spacing: .12em; color: #2b1e07;
+  background: var(--gold); border-radius: 4px; padding: 1px 5px; flex: 0 0 auto;
 }
 .bmembers {
-  font-size: .64rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: .76rem; color: #cfe0d8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px;
 }
-.pips { display: flex; gap: 3px; margin-top: 3px; }
+.pips { display: flex; gap: 5px; margin-top: 5px; }
 .banner.b .pips { justify-content: flex-end; }
 .pips i {
-  width: 8px; height: 8px; border-radius: 50%; display: block;
-  background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+  width: 13px; height: 13px; border-radius: 50%; display: block;
+  background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.18);
 }
 .pips i.on {
-  background: var(--tc); box-shadow: 0 0 7px var(--tc), inset 0 1px 0 rgba(255,255,255,.5);
+  background: radial-gradient(circle at 35% 30%, #fff8, var(--tc) 60%);
+  box-shadow: 0 0 10px var(--tc), inset 0 1px 0 rgba(255,255,255,.6);
 }
 .pips i.just { animation: pipPop .6s cubic-bezier(.2,.9,.3,1); }
 @keyframes pipPop { 0% { transform: scale(2.4); opacity: .2; } }
 
-.bscore { text-align: center; line-height: 1; flex: 0 0 auto; }
-.bscore b { display: block; font-size: 1.55rem; font-weight: 800; color: var(--tc); }
-.bscore span { display: block; font-size: .55rem; letter-spacing: .08em; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+/* points + tricks, as a pair of gems */
+.bstats { display: flex; gap: 7px; flex: 0 0 auto; }
+.stat {
+  min-width: 52px; text-align: center; line-height: 1; border-radius: 10px;
+  padding: 5px 7px 4px;
+  background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.2));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.09), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.stat b { display: inline-block; font-size: 1.75rem; font-weight: 800; color: var(--tc); text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+.stat i { font-style: normal; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.stat span { display: block; font-size: .5rem; letter-spacing: .16em; color: var(--muted); margin-top: 3px; }
+.stat.trk { box-shadow: inset 0 0 0 1px rgba(230,189,109,.3), inset 0 1px 0 rgba(255,255,255,.12); }
+.stat.trk b { color: var(--gold); }
+.stat.trk.hot {
+  box-shadow: inset 0 0 0 1px rgba(230,189,109,.8), 0 0 16px rgba(230,189,109,.38);
+  animation: trkHot 1.3s ease-in-out infinite;
+}
+@keyframes trkHot { 50% { box-shadow: inset 0 0 0 1px var(--gold), 0 0 26px rgba(230,189,109,.6); } }
 
 /* ───────── the Hokm card, bottom-left of the table ───────── */
 .trumpcard {
@@ -332,6 +351,27 @@ input::placeholder { color: #6d8279; }
 }
 @keyframes clockBeat { 50% { transform: scale(1.14); } }
 
+/* last trick, tucked into the top-right corner */
+.lasttrick {
+  position: absolute; right: 10px; top: 8px; z-index: 13; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 8px 5px; border-radius: 11px;
+  background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.22));
+  border: 1px solid rgba(255,255,255,.1);
+}
+.lt-label { font-size: .5rem; letter-spacing: .18em; font-weight: 800; color: var(--gold); }
+.lt-cards { position: relative; display: flex; gap: 2px; height: calc(var(--ch) * .46); }
+.lt-cards .card {
+  position: relative; width: calc(var(--cw) * .46); height: calc(var(--ch) * .46);
+  margin: 0; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,.45);
+}
+.lt-cards .card .corner.br, .lt-cards .card .center { display: none; }
+.lt-cards .card .corner.tl { top: 2px; left: 3px; font-size: calc(var(--cw) * .19); }
+.lt-cards .card .corner.tl i { font-size: calc(var(--cw) * .17); }
+.lt-cards .card.win { box-shadow: 0 0 0 2px var(--gold), 0 0 12px rgba(230,189,109,.6); z-index: 3; }
+.lt-who { font-size: .58rem; color: var(--muted); max-width: 132px; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* emote bubbles */
 .bubble {
   position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
@@ -345,6 +385,9 @@ input::placeholder { color: #6d8279; }
   content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
   border: 7px solid transparent; border-top-color: var(--gold);
 }
+/* the player at the top has no room above them, so their bubble hangs below */
+.hero.pos-top .bubble { bottom: auto; top: calc(100% + 6px); }
+.hero.pos-top .bubble::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--gold); }
 .bubble.out { animation: bubbleOut .3s ease forwards; }
 @keyframes bubbleIn { from { transform: translateX(-50%) scale(.4); opacity: 0; } }
 @keyframes bubbleOut { to { transform: translateX(-50%) scale(.85); opacity: 0; } }
@@ -480,9 +523,10 @@ input::placeholder { color: #6d8279; }
 
 .prompt {
   position: relative; z-index: 20; text-align: center; font-size: .86rem; color: var(--gold);
-  margin: 0; padding: 0 12px 10px; padding-bottom: max(10px, env(safe-area-inset-bottom));
+  margin: 0; padding: 0 82px 10px; padding-bottom: max(10px, env(safe-area-inset-bottom));
   min-height: 1.3em; text-shadow: 0 1px 4px rgba(0,0,0,.6);
 }
+.vertag { font-size: .66rem; font-weight: 600; color: var(--muted); letter-spacing: .06em; }
 
 /* ───────── overlays ───────── */
 .overlay {
@@ -537,12 +581,17 @@ input::placeholder { color: #6d8279; }
 .chatform { display: flex; gap: 6px; padding: 10px; border-top: 1px solid rgba(255,255,255,.1); }
 
 .toast {
-  position: fixed; left: 50%; top: 68px; transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: calc(var(--ch) + 58px); transform: translateX(-50%);
+  max-width: min(360px, 82vw); text-align: center;
   background: #7c241d; color: #fff; padding: .6rem 1rem; border-radius: 10px;
   font-size: .88rem; z-index: 80; box-shadow: var(--shadow);
 }
 
 /* ───────── sizing ───────── */
+/* there's room to bring the Hokm card in off the edge once the table is wide */
+@media (min-width: 700px) {
+  .trumpcard { left: clamp(110px, 16vw, 210px); }
+}
 @media (min-width: 760px) and (min-height: 700px) {
   :root { --cw: 92px; --ch: 128px; }
   .portrait { width: 72px; height: 72px; }
@@ -557,17 +606,25 @@ input::placeholder { color: #6d8279; }
 }
 /* the header has to earn its keep on a phone */
 @media (max-width: 680px) {
-  .hud { gap: 6px; padding: 5px 6px; padding-top: max(5px, env(safe-area-inset-top)); }
-  .banner { gap: 6px; padding: 4px 7px 4px 5px; }
-  .crest { width: 24px; height: 28px; }
-  .bmembers { display: none; }
-  .bname { font-size: .62rem; letter-spacing: .1em; }
+  .hud { gap: 5px; padding: 5px 5px; padding-top: max(5px, env(safe-area-inset-top)); }
+  .banner { gap: 6px; padding: 4px 6px 4px 4px; }
+  .crest { width: 28px; height: 32px; }
+  .bmembers { font-size: .58rem; }
+  .bname { font-size: .68rem; letter-spacing: .1em; }
   .youtag { font-size: .44rem; padding: 1px 3px; letter-spacing: .06em; }
-  .pips { gap: 2.5px; margin-top: 3px; }
-  .pips i { width: 6px; height: 6px; }
-  .bscore b { font-size: 1.2rem; }
-  .bscore span { font-size: .5rem; }
+  .pips { gap: 3px; margin-top: 3px; }
+  .pips i { width: 9px; height: 9px; }
+  .bstats { gap: 4px; }
+  .stat { min-width: 34px; padding: 3px 4px 3px; }
+  .stat b { font-size: 1.15rem; }
+  .stat i { font-size: .62rem; }
+  .stat span { font-size: .4rem; letter-spacing: .1em; margin-top: 2px; }
   .icon { width: 28px; height: 28px; font-size: .92rem; }
+  .prompt { padding-left: 12px; padding-right: 74px; font-size: .8rem; }
+  .lasttrick { padding: 4px 5px 4px; gap: 2px; }
+  .lt-who { max-width: 118px; font-size: .52rem; }
+  .lt-cards { height: calc(var(--ch) * .4); gap: 1px; }
+  .lt-cards .card { width: calc(var(--cw) * .4); height: calc(var(--ch) * .4); }
   .emote-menu { gap: 5px; padding: 6px; }
   .emote-menu button { font-size: .74rem; padding: .36rem .5rem; gap: 5px; }
   .emote-menu button span { font-size: 1rem; }
