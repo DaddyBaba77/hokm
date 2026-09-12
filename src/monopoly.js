@@ -16,9 +16,11 @@ export const HOUSE_STOCK = 32;
 export const HOTEL_STOCK = 12;
 export const JAIL_FINE = 50;
 
+// No blue: the table and the board are blue, so a blue player disappears into
+// them. These eight all carry against dark navy and against the paintings.
 export const TOKEN_COLOURS = [
-  '#ff5d5d', '#5fb2ff', '#63d788', '#ffd15c',
-  '#c98bff', '#ff9c4d', '#4de0d0', '#ff7ac0',
+  '#ff5d5d', '#b8f55a', '#63d788', '#ffd15c',
+  '#c98bff', '#ff9c4d', '#3ee8b0', '#ff7ac0',
 ];
 
 /**

@@ -1435,80 +1435,240 @@ window.Bazaar = (function () {
   // ─────────────────────────────────────────── the auction
 
   let lastAuctionKey = null;
+  // ─────────────────────────────────────────── the auction
+  //
+  // A property under the hammer, at the size it deserves: the painting, the
+  // standing bid, everybody's piece round the table, and a clock running down.
+  // You can also set your bid before it reaches you, and it goes in for you.
+
+  let prebid = null;          // a number to bid, 'pass', or null
+  let prebidAt = null;        // which auction it was set for
+  let bidSent = null;         // guard so a ready bid only goes in once
+  let auTick = null;
+
+  function resetPrebid() { prebid = null; prebidAt = null; bidSent = null; }
+
+  function bidStep(sp, high) {
+    void high;
+    return Math.max(5, Math.round(sp.price * 0.08 / 5) * 5);
+  }
+
   function paintAuction() {
     const box = $('mAuction');
     const a = S.auction;
     if (!a || S.phase !== 'auction') {
+      if (!box.classList.contains('hidden')) resetPrebid();
       box.classList.add('hidden');
       lastAuctionKey = null;
+      clearInterval(auTick); auTick = null;
       return;
     }
-    const key = [a.pos, a.high, a.highSeat, a.turn, a.out.join(','), S.seat].join('|');
-    box.classList.remove('hidden');
-    if (key === lastAuctionKey) return;
-    lastAuctionKey = key;
-
     const sp = META.board[a.pos];
     const me = S.seat;
     const mine = a.turn === me && me !== null && me !== undefined;
+    const cash = me === null || me === undefined ? 0 : S.players[me].cash;
+
+    // a new lot clears whatever you had readied for the last one
+    if (prebidAt !== a.pos) resetPrebid();
+    prebidAt = a.pos;
+
+    // your readied bid goes in the moment the hammer reaches you
+    if (mine && prebid !== null && bidSent !== a.high) {
+      bidSent = a.high;
+      if (prebid === 'pass') { prebid = null; send({ type: 'passBid' }); return; }
+      if (prebid > a.high && prebid <= cash) {
+        const amount = prebid;
+        prebid = null;
+        sfx('coin');
+        send({ type: 'bid', amount });
+        return;
+      }
+      prebid = null;                 // it was outbid while you waited
+      toastOnce('Your ready bid was passed — the price went over it.');
+    }
+
+    box.classList.remove('hidden');
+    const key = [a.pos, a.high, a.highSeat, a.turn, a.out.join(','), S.seat, prebid].join('|');
+    if (key !== lastAuctionKey) {
+      lastAuctionKey = key;
+      drawAuction(box, a, sp, me, mine, cash);
+    }
+    auClock(a);
+    if (!auTick) auTick = setInterval(() => { if (S && S.auction) auClock(S.auction); }, 200);
+  }
+
+  let lastToast = null;
+  function toastOnce(msg) {
+    if (lastToast === msg) return;
+    lastToast = msg;
+    setTimeout(() => { lastToast = null; }, 4000);
+    if (toast) toast(msg);
+  }
+
+  /** The ring and the seconds, redrawn five times a second. */
+  function auClock() {
+    const ring = $('auRing');
+    if (!ring) return;
+    const total = S.turnTotal || 0;
+    const left = S.turnDeadline ? Math.max(0, S.turnDeadline - Date.now()) : 0;
+    const frac = total > 0 ? left / total : 0;
+    ring.style.setProperty('--f', frac.toFixed(3));
+    ring.classList.toggle('low', total > 0 && frac < 0.34);
+    const secs = $('auSecs');
+    if (secs) secs.textContent = total > 0 ? String(Math.ceil(left / 1000)) : '—';
+  }
+
+  function drawAuction(box, a, sp, me, mine, cash) {
     box.innerHTML = '';
+    const colour = sp.type === 'street' ? META.groups[sp.group].colour
+      : sp.type === 'rail' ? '#9a7434' : '#4aa3d6';
+    box.style.setProperty('--c', a.highSeat === null ? colour : S.players[a.highSeat].colour);
 
     const strip = el('div', 'au-strip');
-    strip.style.background = sp.type === 'street' ? META.groups[sp.group].colour : '#c9b48a';
+    strip.style.background = colour;
     box.appendChild(strip);
-    box.appendChild(el('div', 'au-kind', 'UP FOR AUCTION'));
-    box.appendChild(el('div', 'au-name', sp.name));
-    box.appendChild(el('div', 'au-list', `list price ${money(sp.price)}`));
 
-    const high = el('div', 'au-high');
-    if (a.highSeat === null) high.textContent = 'No bids yet';
-    else {
-      high.innerHTML = `<b>${money(a.high)}</b><span>from ${S.players[a.highSeat].name}</span>`;
+    const head = el('div', 'au-head');
+    head.appendChild(el('div', 'au-kind', 'UNDER THE HAMMER'));
+    const ring = el('div', 'au-ring');
+    ring.id = 'auRing';
+    const secs = el('b', null, '—');
+    secs.id = 'auSecs';
+    ring.appendChild(secs);
+    head.appendChild(ring);
+    box.appendChild(head);
+
+    const body = el('div', 'au-body');
+
+    const art = el('div', 'au-art');
+    if (STREET_ART[a.pos]) art.style.setProperty('--img', `url("streets/${STREET_ART[a.pos]}-p.webp")`);
+    const artband = el('span', 'au-artband');
+    artband.style.background = colour;
+    art.appendChild(artband);
+    body.appendChild(art);
+
+    const info = el('div', 'au-info');
+    info.appendChild(el('div', 'au-name', sp.name));
+    if (sp.fa) info.appendChild(el('div', 'au-fa', sp.fa));
+    info.appendChild(el('div', 'au-list', `list price ${money(sp.price)}`));
+
+    const high = el('div', 'au-high' + (a.highSeat === null ? ' none' : ''));
+    if (a.highSeat === null) {
+      high.appendChild(el('b', null, 'No bids yet'));
+      high.appendChild(el('span', null, `opens at ${money(1)}`));
+    } else {
       high.style.setProperty('--c', S.players[a.highSeat].colour);
+      high.appendChild(el('b', null, money(a.high)));
+      high.appendChild(el('span', null, `standing bid — ${S.players[a.highSeat].name}`));
     }
-    box.appendChild(high);
+    info.appendChild(high);
+    body.appendChild(info);
+    box.appendChild(body);
 
+    // everybody round the table
     const who = el('div', 'au-who');
     for (const p of S.players) {
       if (p.bust) continue;
-      const chip = el('span', 'au-chip' + (a.out.includes(p.seat) ? ' out' : '') + (a.turn === p.seat ? ' on' : ''), p.name);
+      const out = a.out.includes(p.seat);
+      const chip = el('div', 'au-bidder' + (out ? ' out' : '') + (a.turn === p.seat ? ' on' : '')
+        + (a.highSeat === p.seat ? ' lead' : ''));
       chip.style.setProperty('--c', p.colour);
+      const pic = el('i', 'au-pc');
+      pic.style.setProperty('--piece', pieceImg(p.token || 'lion'));
+      chip.appendChild(pic);
+      chip.appendChild(el('span', null, p.name));
+      if (a.highSeat === p.seat) chip.appendChild(el('b', null, money(a.high)));
+      else if (out) chip.appendChild(el('b', null, 'out'));
       who.appendChild(chip);
     }
     box.appendChild(who);
 
-    if (!mine) {
-      box.appendChild(el('p', 'au-wait', `waiting on ${S.players[a.turn].name}`));
+    if (me === null || me === undefined) {
+      box.appendChild(el('p', 'au-wait', 'The room is bidding.'));
+      return;
+    }
+    if (a.out.includes(me)) {
+      box.appendChild(el('p', 'au-wait', 'You are out of this one.'));
       return;
     }
 
-    const cash = S.players[me].cash;
-    const step = Math.max(5, Math.round(sp.price * 0.08 / 5) * 5);
-    const row = el('div', 'au-row');
+    const step = bidStep(sp, a.high);
+    const floor = a.high + 1;
+    const start = Math.min(cash, a.high + step);
+
+    const pad = el('div', 'au-pad');
+    const amountBox = el('div', 'au-amount');
+    const minus = el('button', 'au-pm', '−');
     const input = el('input', 'au-input');
-    input.type = 'number';
-    input.min = a.high + 1;
-    input.max = cash;
-    input.value = Math.min(cash, a.high + step);
-    row.appendChild(input);
-    const go = el('button', 'btn primary', 'Bid');
-    go.addEventListener('click', () => send({ type: 'bid', amount: Number(input.value) }));
-    row.appendChild(go);
-    box.appendChild(row);
+    input.type = 'number'; input.min = floor; input.max = cash;
+    input.value = mine ? start : (typeof prebid === 'number' ? prebid : start);
+    const plus = el('button', 'au-pm', '+');
+    const clampBid = (v) => Math.max(floor, Math.min(cash, Math.round(v) || floor));
+    minus.addEventListener('click', () => { input.value = clampBid(Number(input.value) - step); });
+    plus.addEventListener('click', () => { input.value = clampBid(Number(input.value) + step); });
+    amountBox.appendChild(minus);
+    amountBox.appendChild(input);
+    amountBox.appendChild(plus);
+    pad.appendChild(amountBox);
 
     const quick = el('div', 'au-quick');
-    for (const s of [step, 50, 100]) {
+    for (const s of [step, 50, 100, 250]) {
       const amount = a.high + s;
-      const q = el('button', 'btn ghost small', '+' + s);
+      const q = el('button', 'btn ghost', '+' + s);
       if (amount > cash) q.disabled = true;
-      else q.addEventListener('click', () => send({ type: 'bid', amount }));
+      else q.addEventListener('click', () => { input.value = String(amount); });
       quick.appendChild(q);
     }
-    const out = el('button', 'btn ghost small', 'Drop out');
-    out.addEventListener('click', () => send({ type: 'passBid' }));
-    quick.appendChild(out);
-    box.appendChild(quick);
-    box.appendChild(el('p', 'au-cash', `you hold ${money(cash)}`));
+    const allin = el('button', 'btn ghost au-allin', 'All in');
+    allin.addEventListener('click', () => { input.value = String(cash); });
+    if (cash <= a.high) allin.disabled = true;
+    quick.appendChild(allin);
+    pad.appendChild(quick);
+    box.appendChild(pad);
+
+    const acts = el('div', 'au-acts');
+    if (mine) {
+      const go = el('button', 'btn primary big au-bid', 'Bid');
+      const paint = () => { go.textContent = `Bid ${money(clampBid(Number(input.value)))}`; };
+      input.addEventListener('input', paint);
+      minus.addEventListener('click', paint);
+      plus.addEventListener('click', paint);
+      for (const q of quick.children) q.addEventListener('click', paint);
+      paint();
+      go.disabled = cash <= a.high;
+      go.addEventListener('click', () => { sfx('coin'); send({ type: 'bid', amount: clampBid(Number(input.value)) }); });
+      acts.appendChild(go);
+      const out = el('button', 'btn ghost', 'Drop out');
+      out.addEventListener('click', () => send({ type: 'passBid' }));
+      acts.appendChild(out);
+    } else {
+      // set it now and it goes in the moment the hammer reaches you
+      const ready = el('button', 'btn primary big au-ready'
+        + (typeof prebid === 'number' ? ' set' : ''),
+        typeof prebid === 'number' ? `Ready: ${money(prebid)} — tap to clear` : 'Ready this bid');
+      ready.addEventListener('click', () => {
+        if (typeof prebid === 'number') prebid = null;
+        else { prebid = clampBid(Number(input.value)); sfx('flip'); }
+        lastAuctionKey = null;
+        paint();
+      });
+      if (cash <= a.high) ready.disabled = true;
+      acts.appendChild(ready);
+      const skip = el('button', 'btn ghost' + (prebid === 'pass' ? ' on' : ''),
+        prebid === 'pass' ? 'Will drop out' : 'Drop out when it reaches me');
+      skip.addEventListener('click', () => {
+        prebid = prebid === 'pass' ? null : 'pass';
+        lastAuctionKey = null;
+        paint();
+      });
+      acts.appendChild(skip);
+    }
+    box.appendChild(acts);
+
+    const foot = el('p', 'au-cash', mine
+      ? `Your turn — you hold ${money(cash)}`
+      : `${S.players[a.turn].name} is bidding — you hold ${money(cash)}`);
+    box.appendChild(foot);
   }
 
   // ─────────────────────────────────────────── my deeds

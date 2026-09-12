@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.15.0
+
+- **The auction is three times the size** and properly under the hammer: the
+  property's painting, the standing bid in the leading bidder's colour at the
+  size of a scoreboard, and everyone at the table round it as their own piece —
+  the one bidding lit up, the leader carrying the price, whoever has dropped out
+  greyed and struck through. The whole panel glows in the colour of whoever is
+  winning it.
+- **A clock on the bidding** — a ring that drains with the seconds inside it, and
+  turns red and starts pulsing when it is nearly up.
+- **Ready your bid before it reaches you.** Set an amount while somebody else is
+  bidding and it goes in the moment the hammer comes round — or say you will drop
+  out and it passes for you. If the price goes over what you readied, it tells
+  you rather than bidding anyway.
+- The bid pad is a proper one now: big plus and minus, **+20 / +50 / +100 / +250**
+  and **All in**, with the button naming the exact figure you are about to bid.
+- **No blue pieces.** The table and the board are navy, so a blue player vanished
+  into them — that colour is out, replaced with a lime that carries.
+- **The price on a square is a watermark** so it no longer sits on top of the
+  painting; hover the square and it comes forward and reads solid.
+- **No more bare table around the middle painting** — it sits in a bronze mount
+  that runs right up to the squares.
+
 ## 1.14.0
 
 - **There are only two roads to jail now**: the Go to Jail corner, and a card

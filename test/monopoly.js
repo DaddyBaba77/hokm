@@ -3,7 +3,7 @@
 
 import {
   MonopolyGame, BOARD, GROUP_MEMBERS, GROUPS, RAILS, UTILS, BUYABLE,
-  SPACES, HOUSE_STOCK, HOTEL_STOCK, FORTUNE, TREASURY, RAIL_RENT,
+  SPACES, HOUSE_STOCK, HOTEL_STOCK, FORTUNE, TREASURY, RAIL_RENT, TOKEN_COLOURS,
 } from '../src/monopoly.js';
 import { act, judgeOffer } from '../src/monopoly-bot.js';
 
@@ -44,6 +44,20 @@ check(new Set(BOARD.map((s) => s.name)).size >= 34, 'the names are distinct enou
 check(FORTUNE.length === 16 && TREASURY.length === 16, 'sixteen cards in each deck');
 check(new Set([...FORTUNE, ...TREASURY].map((c) => c.id)).size === 32, 'every card id is unique');
 check(RAIL_RENT.join() === '0,25,50,100,200', 'caravanserai rents are 25/50/100/200');
+check(new Set(TOKEN_COLOURS).size === 8, 'eight distinct player colours');
+// the table and the board are navy, so no player sits in the blue band of the
+// wheel (violet and teal are far enough away to read)
+const hueOf = (c) => {
+  const r = parseInt(c.slice(1, 3), 16) / 255;
+  const g = parseInt(c.slice(3, 5), 16) / 255;
+  const b = parseInt(c.slice(5, 7), 16) / 255;
+  const hi = Math.max(r, g, b), lo = Math.min(r, g, b), d = hi - lo;
+  if (d === 0) return 0;
+  const h = hi === r ? ((g - b) / d) % 6 : hi === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+};
+check(TOKEN_COLOURS.every((c) => { const h = hueOf(c); return h < 195 || h > 265; }),
+  'no player colour sits in the blue band');
 
 // the four corners land where they should
 check(BOARD[0].type === 'go', 'GO is space 0');

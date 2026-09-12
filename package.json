@@ -1,6 +1,6 @@
 {
   "name": "hokm-online",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "Online multiplayer board and card games — Hokm (حکم), Bazaar and Snakes & Ladders — with room codes and AI bots",
   "type": "module",
   "main": "server.js",
