@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-<title>Hokm — حکم</title>
-<meta name="description" content="Play Hokm online with friends. Four players, two teams, no signup." />
+<title>Hokm · Bazaar · Snakes &amp; Ladders</title>
+<meta name="description" content="Play Hokm, Bazaar and Snakes &amp; Ladders online with friends. No accounts, no installs — just send a link." />
 <meta name="theme-color" content="#0b1f18" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♠️</text></svg>" />
 <link rel="stylesheet" href="style.css" />
@@ -30,6 +30,16 @@
         </svg>
         <span class="gp-name">Hokm</span>
         <span class="gp-sub">4 players &middot; two teams</span>
+      </button>
+      <button type="button" class="gp" data-game="monopoly">
+        <svg class="gp-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3.4 3.4h17.2v17.2H3.4z" class="ln"/>
+          <path d="M3.4 8h17.2M3.4 16h17.2M8 3.4v17.2M16 3.4v17.2" class="ln2"/>
+          <path d="M3.4 3.4h4.6v4.6H3.4zM16 16h4.6v4.6H16z"/>
+          <circle cx="12" cy="12" r="1.5"/>
+        </svg>
+        <span class="gp-name">Bazaar</span>
+        <span class="gp-sub">2&ndash;8 players &middot; property trading</span>
       </button>
       <button type="button" class="gp" data-game="snakes">
         <svg class="gp-ico" viewBox="0 0 24 24" aria-hidden="true">
@@ -72,6 +82,16 @@
         <li>A <b>six</b> earns you another roll — but roll three sixes in a row and the whole turn is forfeit.</li>
         <li>The board is drawn fresh every game, so nobody can learn it.</li>
       </ul>
+      <ul id="bazaarRules" class="hidden">
+        <li>Two to eight players go round a forty-space bazaar collecting <b>◈200</b> every time they pass GO.</li>
+        <li>Land on an unclaimed quarter and you buy it — or it goes to auction, depending on the table settings.</li>
+        <li>Land on someone else's and you pay their rent. Hold every quarter of one colour and the rent doubles, and you can start building.</li>
+        <li>Four houses become a hotel. Build evenly across a colour group — no stacking one street.</li>
+        <li>Caravanserais charge more the more of the four you hold; the utilities charge a multiple of your roll.</li>
+        <li>Three doubles in a row and the guard takes you to the dungeon. Pay ◈50, use a pardon, or roll a double to get out.</li>
+        <li>Short of cash? Mortgage a deed for half its price, or sell buildings back at half. Run out of both and you are ruined.</li>
+        <li>The host picks how a game ends — on a clock, at the first ruin, or the last one standing.</li>
+      </ul>
     </details>
   </div>
 </section>
@@ -93,6 +113,55 @@
       <div class="teamtag team-b">Team B</div>
       <div id="seatList" class="seats"></div>
     </div>
+
+    <details id="tableSettings" class="settings hidden">
+      <summary>Table settings</summary>
+      <div class="set-grid">
+        <div class="set-row">
+          <span class="set-label">Landing on something unclaimed</span>
+          <div class="seg" data-key="buyMode">
+            <button type="button" data-val="buy">Buy or pass</button>
+            <button type="button" data-val="buyAuction">Pass &rarr; auction</button>
+            <button type="button" data-val="auction">Always auction</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <span class="set-label">How the game ends</span>
+          <div class="seg" data-key="endMode">
+            <button type="button" data-val="timed">On a clock</button>
+            <button type="button" data-val="firstbust">At the first ruin</button>
+            <button type="button" data-val="last">Last one standing</button>
+          </div>
+        </div>
+        <div class="set-row" id="setMinutesRow">
+          <span class="set-label">Clock</span>
+          <div class="seg" data-key="minutes">
+            <button type="button" data-val="30">30m</button>
+            <button type="button" data-val="45">45m</button>
+            <button type="button" data-val="60">60m</button>
+            <button type="button" data-val="90">90m</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <span class="set-label">Starting cash</span>
+          <div class="seg" data-key="startCash">
+            <button type="button" data-val="1000">◈1,000</button>
+            <button type="button" data-val="1500">◈1,500</button>
+            <button type="button" data-val="2000">◈2,000</button>
+            <button type="button" data-val="2500">◈2,500</button>
+          </div>
+        </div>
+        <div class="set-row toggles">
+          <span class="set-label">House rules</span>
+          <div class="toggle-set">
+            <label><input type="checkbox" data-key="freeParking" /> <span>Tea house jackpot — taxes and fines pile in the middle</span></label>
+            <label><input type="checkbox" data-key="doubleGo" /> <span>Double salary for landing exactly on GO</span></label>
+            <label><input type="checkbox" data-key="noJailRent" /> <span>No rent collected while the owner is in the dungeon</span></label>
+          </div>
+        </div>
+      </div>
+      <p class="set-hint" id="setHint"></p>
+    </details>
 
     <div class="lobby-actions">
       <button id="randomBtn" class="btn ghost">Random teams</button>
@@ -187,6 +256,64 @@
   </div>
 </section>
 
+<!-- ══════════ Bazaar ══════════ -->
+<section id="monopoly" class="screen hidden">
+  <header class="hud mono-hud">
+    <div class="mono-brand">BAZAAR <span>بازار</span></div>
+    <div class="mono-hudright">
+      <span class="mono-pot hidden" id="mPot"></span>
+      <span class="mono-bank" id="mBank"></span>
+      <span class="mono-clock" id="mClock"></span>
+    </div>
+  </header>
+
+  <div class="mono-wrap">
+    <div class="mono-boardwrap">
+      <div class="mono-board" id="mBoard"></div>
+    </div>
+
+    <aside class="mono-side">
+      <div class="mono-players" id="mPlayers"></div>
+      <div class="mono-offer hidden" id="mOffer"></div>
+      <div class="mono-actions" id="mActions"></div>
+      <div class="mono-deeds" id="mDeeds"></div>
+      <div class="mono-log" id="mLog"></div>
+    </aside>
+  </div>
+
+  <div class="mono-auction hidden" id="mAuction"></div>
+
+  <div class="mono-card hidden" id="mCard">
+    <div class="mcd-head"><b id="mCardDeck"></b><i id="mCardFa"></i></div>
+    <p id="mCardText"></p>
+    <span class="mcd-who" id="mCardWho"></span>
+  </div>
+
+  <div id="mDeed" class="overlay hidden">
+    <div class="modal deedmodal">
+      <div id="mDeedBody"></div>
+      <button id="mDeedClose" class="btn ghost">Close</button>
+    </div>
+  </div>
+
+  <div id="mTrade" class="overlay hidden">
+    <div class="modal trademodal">
+      <h2 id="mTradeTitle">Offer</h2>
+      <div id="mTradeBody"></div>
+      <button id="mTradeClose" class="btn ghost">Cancel</button>
+    </div>
+  </div>
+
+  <div id="mOver" class="overlay hidden">
+    <div class="modal">
+      <div class="crest gold">&#9733;</div>
+      <h2 id="mOverTitle">Game over</h2>
+      <p id="mOverBody" class="prewrap"></p>
+      <button id="mAgain" class="btn primary big">Back to the lobby</button>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════ Overlays ══════════ -->
 <div id="trumpModal" class="overlay hidden">
   <div class="modal">
@@ -245,6 +372,7 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="snakes.js"></script>
+<script src="monopoly.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -61,24 +61,24 @@
    */
   const SPECIES = [
     { name: 'California Mountain Kingsnake', base: '#efe6d2', dark: '#2a231a', viper: false,
-      marks: [ { kind: 'band', c: '#161310', thick: 26, spacing: 62, start: 30, edge: null },
-               { kind: 'band', c: '#ab2f25', thick: 20, spacing: 62, start: 61, edge: '#161310' } ] },
+      marks: [ { kind: 'band', c: '#161310', thick: 18, spacing: 44, start: 22, edge: null },
+               { kind: 'band', c: '#ab2f25', thick: 14, spacing: 44, start: 44, edge: '#161310' } ] },
     { name: 'Eastern Garter Snake', base: '#3a4430', dark: '#1c2114', viper: false,
-      stripe: { c: '#ddc95f', w: 8 }, flank: { c: '#96a165', w: 3.6 },
-      marks: [ { kind: 'fleck', c: '#171b10', thick: 9, spacing: 26, start: 20 } ] },
+      stripe: { c: '#ddc95f', w: 5.5 }, flank: { c: '#96a165', w: 2.6 },
+      marks: [ { kind: 'fleck', c: '#171b10', thick: 7, spacing: 20, start: 15 } ] },
     { name: 'Corn Snake', base: '#d9843f', dark: '#7c3d16', viper: false,
-      marks: [ { kind: 'saddle', c: '#9d2418', thick: 30, spacing: 54, start: 34, edge: '#2b170e' } ] },
+      marks: [ { kind: 'saddle', c: '#9d2418', thick: 21, spacing: 39, start: 24, edge: '#2b170e' } ] },
     { name: 'Northern Pacific Rattlesnake', base: '#a1917a', dark: '#4c4436', viper: true, rattle: true,
-      marks: [ { kind: 'diamond', c: '#4f4636', thick: 34, spacing: 58, start: 36, edge: '#d6cbb0' } ] },
+      marks: [ { kind: 'diamond', c: '#4f4636', thick: 24, spacing: 42, start: 26, edge: '#d6cbb0' } ] },
     { name: 'Rough Green Snake', base: '#4ba63e', dark: '#2b6725', viper: false,
-      stripe: { c: '#9fe07e', w: 4 } },
+      stripe: { c: '#9fe07e', w: 3 } },
     { name: 'Copperhead', base: '#cfa57f', dark: '#7b5133', viper: true,
-      marks: [ { kind: 'hourglass', c: '#8a5333', thick: 24, spacing: 56, start: 32, edge: '#5d3720' } ] },
+      marks: [ { kind: 'hourglass', c: '#8a5333', thick: 17, spacing: 40, start: 23, edge: '#5d3720' } ] },
     { name: 'Black Racer', base: '#26282d', dark: '#0d0e11', viper: false,
-      stripe: { c: '#464c57', w: 5 } },
+      stripe: { c: '#464c57', w: 3.5 } },
     { name: 'San Francisco Garter Snake', base: '#2c748f', dark: '#163f4d', viper: false,
-      stripe: { c: '#bb3a2b', w: 9 }, flank: { c: '#efd977', w: 3.6 },
-      marks: [ { kind: 'fleck', c: '#10333f', thick: 8, spacing: 24, start: 18 } ] },
+      stripe: { c: '#bb3a2b', w: 6 }, flank: { c: '#efd977', w: 2.6 },
+      marks: [ { kind: 'fleck', c: '#10333f', thick: 6, spacing: 19, start: 14 } ] },
   ];
 
   /** Local frame of the body at a distance along it. */
@@ -120,9 +120,9 @@
   function ensureScaleTexture(svg) {
     if (svg.querySelector('#scaleTex')) return;
     const defs = el('defs');
-    const pat = el('pattern', { id: 'scaleTex', width: 15, height: 12, patternUnits: 'userSpaceOnUse' });
-    pat.appendChild(el('path', { d: 'M-7.5,12 a7.5,6.4 0 0 1 15,0 M7.5,12 a7.5,6.4 0 0 1 15,0', class: 'scale-row' }));
-    pat.appendChild(el('path', { d: 'M0,6 a7.5,6.4 0 0 1 15,0 M-15,6 a7.5,6.4 0 0 1 15,0', class: 'scale-row' }));
+    const pat = el('pattern', { id: 'scaleTex', width: 10, height: 8, patternUnits: 'userSpaceOnUse' });
+    pat.appendChild(el('path', { d: 'M-5,8 a5,4.4 0 0 1 10,0 M5,8 a5,4.4 0 0 1 10,0', class: 'scale-row' }));
+    pat.appendChild(el('path', { d: 'M0,4 a5,4.4 0 0 1 10,0 M-10,4 a5,4.4 0 0 1 10,0', class: 'scale-row' }));
     defs.appendChild(pat);
     svg.appendChild(defs);
   }
@@ -137,29 +137,46 @@
     return [...top, ...bot];
   }
 
-  function drawLadder(svg, bottom, top, i) {
+  function drawLadder(svg, bottom, top) {
     const a = centre(bottom), b = centre(top);
     const dx = b.x - a.x, dy = b.y - a.y;
-    const len = Math.hypot(dx, dy);
-    const ux = dx / len, uy = dy / len;
-    const px = -uy, py = ux;                 // perpendicular
-    const w = 15;                            // half the rail spacing
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy / len, py = dx / len;
+    const wLo = 17, wHi = 13;            // narrows toward the top, for depth
 
     const g = el('g', { class: 'sl-ladder' });
-    for (const s of [-1, 1]) {
-      g.appendChild(el('line', {
-        x1: a.x + px * w * s, y1: a.y + py * w * s,
-        x2: b.x + px * w * s, y2: b.y + py * w * s,
-        class: 'rail',
-      }));
-    }
-    const rungs = Math.max(3, Math.round(len / 46));
+    const rail = (side) => {
+      const x1 = a.x + px * wLo * side, y1 = a.y + py * wLo * side;
+      const x2 = b.x + px * wHi * side, y2 = b.y + py * wHi * side;
+      return { x1, y1, x2, y2 };
+    };
+
+    // rungs sit behind the rails so the rails read as the nearer timber
+    const rungs = Math.max(3, Math.round(len / 42));
+    const rungG = el('g');
     for (let k = 1; k < rungs; k++) {
       const t = k / rungs;
+      const w = wLo + (wHi - wLo) * t;
       const cx = a.x + dx * t, cy = a.y + dy * t;
-      g.appendChild(el('line', {
-        x1: cx + px * w, y1: cy + py * w, x2: cx - px * w, y2: cy - py * w, class: 'rung',
+      const x1 = cx + px * w, y1 = cy + py * w, x2 = cx - px * w, y2 = cy - py * w;
+      rungG.appendChild(el('line', { x1, y1, x2, y2, class: 'rung-shadow' }));
+      rungG.appendChild(el('line', { x1, y1, x2, y2, class: 'rung' }));
+      rungG.appendChild(el('line', {
+        x1: x1 - dx / len * 1.4, y1: y1 - dy / len * 1.4,
+        x2: x2 - dx / len * 1.4, y2: y2 - dy / len * 1.4, class: 'rung-light',
       }));
+    }
+    g.appendChild(rungG);
+
+    for (const side of [-1, 1]) {
+      const r = rail(side);
+      g.appendChild(el('line', { ...r, class: 'rail-shadow' }));
+      g.appendChild(el('line', { ...r, class: 'rail' }));
+      g.appendChild(el('line', {
+        x1: r.x1 - px * 2.6 * side, y1: r.y1 - py * 2.6 * side,
+        x2: r.x2 - px * 2.6 * side, y2: r.y2 - py * 2.6 * side, class: 'rail-light',
+      }));
+      g.appendChild(el('line', { ...r, class: 'rail-grain' }));
     }
     g.dataset.from = bottom;
     svg.appendChild(g);
@@ -182,7 +199,7 @@
     const px = -dy / len, py = dx / len;
 
     const waves = Math.max(2, Math.round(len / 150));
-    const amp = Math.min(58, 26 + len * 0.07);
+    const amp = Math.min(54, 24 + len * 0.07);
     const pts = [];
     const steps = waves * 2 + 2;
     for (let k = 0; k <= steps; k++) {
@@ -203,7 +220,7 @@
     // a real snake tapers, so the body is a filled outline rather than a stroke
     const total = body.getTotalLength();
     const N = 110;
-    const wMax = 25;
+    const wMax = 17;
     const left = [], right = [];
     for (let k = 0; k <= N; k++) {
       const f = k / N;
@@ -245,7 +262,7 @@
         const shifted = spline(pts.map(([x, y], k) => {
           const n = pts[Math.min(k + 1, pts.length - 1)], q = pts[Math.max(k - 1, 0)];
           const ux = n[0] - q[0], uy = n[1] - q[1], m = Math.hypot(ux, uy) || 1;
-          return [x + (-uy / m) * 10 * side, y + (ux / m) * 10 * side];
+          return [x + (-uy / m) * 6.5 * side, y + (ux / m) * 6.5 * side];
         }));
         marks.appendChild(el('path', { d: shifted, class: 'snake-stripe', stroke: sp.flank.c, 'stroke-width': sp.flank.w }));
       }
@@ -260,10 +277,10 @@
       const end = pts[pts.length - 1], prev = pts[pts.length - 2];
       const ang0 = Math.atan2(end[1] - prev[1], end[0] - prev[0]);
       for (let k = 0; k < 4; k++) {
-        const off = 10 + k * 11;
+        const off = 7 + k * 8;
         const cx = end[0] + Math.cos(ang0) * off, cy = end[1] + Math.sin(ang0) * off;
         g.appendChild(el('ellipse', {
-          cx, cy, rx: 8 - k * 1.3, ry: 6.4 - k * 0.9, class: 'rattle',
+          cx, cy, rx: 6 - k, ry: 4.8 - k * 0.7, class: 'rattle',
           transform: `rotate(${(ang0 * 180) / Math.PI} ${cx} ${cy})`,
         }));
       }
@@ -272,8 +289,8 @@
     /* ── the head ── */
     const ang = Math.atan2(pts[1][1] - h.y, pts[1][0] - h.x) + Math.PI;
     const R = (x, y) => rotAbout(x, y, ang, h.x, h.y);
-    const L = sp.viper ? 52 : 56;            // snout to neck
-    const W = sp.viper ? 21 : 15;            // half width at the widest
+    const L = sp.viper ? 40 : 43;            // snout to neck
+    const W = sp.viper ? 15 : 11;            // half width at the widest
     const originStyle = `transform-origin:${h.x.toFixed(1)}px ${h.y.toFixed(1)}px`;
     const headG = el('g', { class: 'snake-head', style: originStyle });
 
@@ -380,7 +397,7 @@
     svg.setAttribute('viewBox', `0 0 ${SIDE} ${SIDE}`);
     svg.innerHTML = '';
     Object.entries(board.ladders).forEach(([from, to], i) => {
-      ladderEls.set(Number(from), drawLadder(svg, Number(from), Number(to), i));
+      ladderEls.set(Number(from), drawLadder(svg, Number(from), Number(to)));
     });
     Object.entries(board.snakes).forEach(([head, tail], i) => {
       snakeEls.set(Number(head), drawSnake(svg, Number(head), Number(tail), i));
@@ -486,14 +503,15 @@
 
     // the die tumbles, then settles on what was rolled
     const die = $('slDie');
-    die.classList.add('rolling');
+    const box = die.parentElement;
+    box.classList.add('rolling');
     sound && sound.dice && sound.dice();
-    await wait(620);
-    die.classList.remove('rolling');
-    setDieFace(die, move.die);
-    die.classList.add('landed');
-    setTimeout(() => die.classList.remove('landed'), 400);
-    await wait(260);
+    setDieFace(move.die);
+    await wait(880);
+    box.classList.remove('rolling');
+    box.classList.add('landed');
+    setTimeout(() => box.classList.remove('landed'), 420);
+    await wait(200);
 
     if (move.kind === 'forfeit') {
       const t = tokens.get(move.seat);
@@ -585,10 +603,45 @@
     5: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]],
     6: [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]],
   };
-  function setDieFace(node, n) {
-    node.innerHTML = (PIPS[n] || PIPS[1])
-      .map(([c, r]) => `<i style="grid-column:${c + 1};grid-row:${r + 1}"></i>`).join('');
-    node.dataset.face = n;
+  // where each face sits on the cube, and the rotation that brings it to the front
+  const FACES = [
+    { n: 1, place: 'translateZ(var(--half))',                     show: [0, 0] },
+    { n: 6, place: 'rotateY(180deg) translateZ(var(--half))',     show: [0, 180] },
+    { n: 3, place: 'rotateY(90deg) translateZ(var(--half))',      show: [0, -90] },
+    { n: 4, place: 'rotateY(-90deg) translateZ(var(--half))',     show: [0, 90] },
+    { n: 2, place: 'rotateX(90deg) translateZ(var(--half))',      show: [-90, 0] },
+    { n: 5, place: 'rotateX(-90deg) translateZ(var(--half))',     show: [90, 0] },
+  ];
+  let dieSpins = 0;
+
+  function buildDie() {
+    const die = $('slDie');
+    die.innerHTML = '';
+    for (const f of FACES) {
+      const face = el2('div', 'die-face');
+      face.style.transform = f.place;
+      face.innerHTML = PIPS[f.n].map(([c, r]) => `<i style="grid-column:${c + 1};grid-row:${r + 1}"></i>`).join('');
+      die.appendChild(face);
+    }
+    setDieFace(1, true);
+  }
+  const el2 = (tag, cls) => { const e = document.createElement(tag); e.className = cls; return e; };
+
+  /** Tumble the die and settle with `n` facing the player. */
+  function setDieFace(n, instant) {
+    const die = $('slDie');
+    const f = FACES.find((x) => x.n === n) || FACES[0];
+    if (instant) {
+      die.style.transition = 'none';
+      die.style.transform = `rotateX(${f.show[0]}deg) rotateY(${f.show[1]}deg)`;
+      void die.offsetWidth;
+      die.style.transition = '';
+      return;
+    }
+    dieSpins += 2 + Math.floor(Math.random() * 2);
+    die.style.transform =
+      `rotateX(${f.show[0] + 360 * dieSpins}deg) rotateY(${f.show[1] + 360 * (dieSpins + 1)}deg)`;
+    die.dataset.face = n;
   }
 
   /* ── render ─────────────────────────────────────────────────────────────── */
@@ -600,7 +653,9 @@
     syncTokens(g);
 
     if (shown.length !== g.players.length) shown = g.positions.slice();
-    if (!running) {
+    // Only trust the server's positions when nothing is waiting to be animated —
+    // otherwise a token jumps to its destination and then hops there again.
+    if (!running && queue.length === 0) {
       g.players.forEach((p) => {
         if (shown[p.seat] !== p.position) {
           shown[p.seat] = p.position;
@@ -663,7 +718,7 @@
       socket = deps.socket; sound = deps.sound; toast = deps.toast;
       $('slRoll').onclick = () => { if (socket) socket.emit('roll'); };
       $('slAgain').onclick = () => { if (socket) socket.emit('newGame'); };
-      setDieFace($('slDie'), 1);
+      buildDie();
       window.addEventListener('resize', () => { if (liveState) paint(liveState, true); });
     },
     render(S) {

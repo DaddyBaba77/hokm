@@ -7,6 +7,13 @@ import { fileURLToPath } from 'node:url';
 import { HokmGame, shuffle, teamOf, TEAM_NAME } from './src/game.js';
 import { chooseTrump as botTrump, chooseCard as botCard, botName } from './src/bot.js';
 import { SnakesGame, MIN_PLAYERS as SNAKE_MIN, MAX_PLAYERS as SNAKE_MAX } from './src/snakes.js';
+import {
+  MonopolyGame, DEFAULT_SETTINGS as MONO_DEFAULTS,
+  MIN_PLAYERS as MONO_MIN, MAX_PLAYERS as MONO_MAX,
+  BOARD as MONO_BOARD, GROUPS as MONO_GROUPS,
+  RAILS as MONO_RAILS, UTILS as MONO_UTILS, RAIL_RENT as MONO_RAIL_RENT,
+} from './src/monopoly.js';
+import { act as monoAct, judgeOffer as monoJudge } from './src/monopoly-bot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -16,6 +23,12 @@ const PACE = Number(process.env.HOKM_PACE || 1);
 const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/healthz', (_req, res) => res.send('ok'));
+// The client draws the board from this rather than keeping its own copy, so the
+// deeds on screen can never drift from the deeds the rules use.
+app.get('/bazaar-board.json', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=600');
+  res.json({ board: MONO_BOARD, groups: MONO_GROUPS, rails: MONO_RAILS, utils: MONO_UTILS, railRent: MONO_RAIL_RENT });
+});
 
 const http = createServer(app);
 const io = new Server(http, { cors: { origin: '*' } });
@@ -24,8 +37,9 @@ const io = new Server(http, { cors: { origin: '*' } });
 
 // What the lobby needs to know about each game it can host.
 const GAMES = {
-  hokm:   { id: 'hokm',   name: 'Hokm',              seats: 4,         min: 4,         max: 4,         teams: true  },
-  snakes: { id: 'snakes', name: 'Snakes & Ladders',  seats: SNAKE_MAX, min: SNAKE_MIN, max: SNAKE_MAX, teams: false },
+  hokm:     { id: 'hokm',     name: 'Hokm',             seats: 4,         min: 4,         max: 4,        teams: true  },
+  snakes:   { id: 'snakes',   name: 'Snakes & Ladders', seats: SNAKE_MAX, min: SNAKE_MIN, max: SNAKE_MAX, teams: false },
+  monopoly: { id: 'monopoly', name: 'Bazaar',           seats: MONO_MAX,  min: MONO_MIN,  max: MONO_MAX,  teams: false, settings: MONO_DEFAULTS },
 };
 const gameMeta = (type) => GAMES[type] || GAMES.hokm;
 
@@ -54,6 +68,8 @@ function createRoom(hostId, gameType) {
     names: new Map(), // playerId -> name
     game: null,
     timer: null,
+    endTimer: null,
+    settings: meta.settings ? { ...meta.settings } : null,
     chat: [],
     createdAt: Date.now(),
   };
@@ -76,6 +92,7 @@ function roomPayload(room, playerId) {
     minPlayers: meta.min,
     maxPlayers: meta.max,
     hasTeams: meta.teams,
+    settings: room.settings,
     mySeat: mySeat === -1 ? null : mySeat,
     seats: room.seats.map((s, i) =>
       s ? { seat: i, name: s.name, isBot: s.isBot, connected: s.connected !== false, team: meta.teams ? teamOf(i) : null } : null
@@ -95,7 +112,7 @@ function broadcast(room) {
 
 function syncPlayersIntoGame(room) {
   if (!room.game) return;
-  if (room.gameType === 'snakes') {
+  if (room.gameType === 'snakes' || room.gameType === 'monopoly') {
     // snakes players are compacted at start, so map them one for one
     room.game.players = room.game.players.map((p, i) => {
       const seat = room.seats[i];
@@ -122,6 +139,53 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const ROLL_MS = 45000;
 // long enough for the client to finish hopping, climbing or being eaten
 const SNAKE_BOT_PAUSE = 2600;
+
+// Bazaar: how long a present human gets at each decision, and how long a bot
+// pretends to think so the table reads as a game rather than a log file.
+const MONO_CLOCK = { roll: 60000, buy: 30000, auction: 20000, debt: 90000, end_turn: 45000 };
+// An offer nobody answers would block the table's only offer slot for good.
+const MONO_OFFER_MS = 45000;
+const MONO_PAUSE = {
+  roll: 1500, buy: 1500, auction: 1100, debt: 800, end_turn: 1100,
+  build: 800, sell: 700, mortgage: 700, unmortgage: 700, bankrupt: 1400,
+};
+
+/** Apply one bot/timeout decision. Returns false if there was nothing to do. */
+function applyMonoAction(g, seat, a) {
+  if (!a) return false;
+  switch (a.type) {
+    case 'roll':       g.roll(seat); return true;
+    case 'payFine':    g.payFine(seat); return true;
+    case 'useCard':    g.useJailCard(seat); return true;
+    case 'buy':        g.buy(seat); return true;
+    case 'pass':       g.pass(seat); return true;
+    case 'bid':        g.bid(seat, a.amount); return true;
+    case 'passBid':    g.passBid(seat); return true;
+    case 'build':      g.build(seat, a.pos); return true;
+    case 'sell':       g.sell(seat, a.pos); return true;
+    case 'mortgage':   g.mortgage(seat, a.pos); return true;
+    case 'unmortgage': g.unmortgage(seat, a.pos); return true;
+    case 'bankrupt':   g.declareBankrupt(seat); return true;
+    case 'endTurn':    g.endTurn(seat); return true;
+    case 'propose':    g.propose(seat, a.to, a.give, a.want); return true;
+    default:           return false;
+  }
+}
+
+/**
+ * What to do for a seat that has run out of clock. Never buys or bids on a
+ * missing player's behalf — it just gets the table moving again.
+ */
+function monoTimeout(g, seat) {
+  switch (g.phase) {
+    case 'roll':     return g.jailed[seat] ? { type: 'roll' } : { type: 'roll' };
+    case 'buy':      return { type: 'pass' };
+    case 'auction':  return { type: 'passBid' };
+    case 'end_turn': return { type: 'endTurn' };
+    case 'debt':     return monoAct(g, seat) || { type: 'bankrupt' };
+    default:         return null;
+  }
+}
 
 function advance(room) {
   const g = room.game;
@@ -155,6 +219,66 @@ function advance(room) {
     if (g.phase !== 'playing') return;
     if (isAuto(g.players[g.turn])) schedule(SNAKE_BOT_PAUSE, () => g.roll(g.turn));
     else withClock(ROLL_MS, () => g.roll(g.turn));
+    return;
+  }
+
+  if (room.gameType === 'monopoly') {
+    clearTimeout(room.endTimer);
+    if (g.phase === 'over') return;
+
+    // a timed game ends between turns, not in the middle of somebody's move
+    if (g.endsAt) {
+      if (Date.now() >= g.endsAt && g.phase !== 'debt' && g.phase !== 'auction') { g.timeUp(); return; }
+      room.endTimer = setTimeout(() => {
+        try {
+          if (room.game === g && g.phase !== 'over') { g.timeUp(); broadcast(room); }
+        } catch (err) { console.error('[endTimer]', err); }
+      }, Math.max(50, g.endsAt - Date.now() + 250));
+    }
+
+    // an offer left in front of a bot gets answered before anything else
+    clearTimeout(room.offerTimer);
+    if (g.offer) {
+      const o = g.offer;
+      if (isAuto(g.players[o.to])) {
+        schedule(1300, () => g.respond(o.to, monoJudge(g, o.to, o)));
+        return;
+      }
+      // a present player gets a while to think, then it lapses
+      o.expiresAt ||= Date.now() + MONO_OFFER_MS * PACE;
+      room.offerTimer = setTimeout(() => {
+        try {
+          if (room.game !== g || !g.offer || g.offer.at !== o.at) return;
+          g.respond(o.to, false);
+          g.note(`The offer to ${g.name(o.to)} lapses.`);
+          advance(room);
+          broadcast(room);
+        } catch (err) { console.error('[offerTimer]', err); }
+      }, Math.max(50, o.expiresAt - Date.now()));
+    }
+
+    const seat = g.actorSeat();
+    if (seat === null) return;
+
+    // A decision that leaves the game exactly as it found it would be taken
+    // again on the next pass, and again, for ever. Rather than trust every
+    // branch of the bot to always make progress, watch the state itself: after
+    // a few identical passes, force the move that certainly ends the turn.
+    const snapshot = [g.phase, g.turn, g.owner.join(), g.houses.join(''), g.cash.join(), g.offer ? 1 : 0].join('|');
+    room.monoSpin = snapshot === room.monoAt ? (room.monoSpin || 0) + 1 : 0;
+    room.monoAt = snapshot;
+    const stuck = room.monoSpin > 3;
+
+    if (isAuto(g.players[seat])) {
+      const a = (stuck ? null : monoAct(g, seat)) || monoTimeout(g, seat);
+      if (!a) return;
+      schedule(stuck ? 40 : (MONO_PAUSE[a.type] ?? MONO_PAUSE[g.phase] ?? 1000), () => applyMonoAction(g, seat, a));
+    } else if (stuck && g.phase === 'end_turn') {
+      // a present human cannot wedge the table either
+      schedule(40, () => g.endTurn(seat));
+    } else {
+      withClock(MONO_CLOCK[g.phase] || 45000, () => applyMonoAction(g, seat, monoTimeout(g, seat)));
+    }
     return;
   }
 
@@ -293,7 +417,7 @@ io.on('connection', (socket) => {
     if (!r || r.game) return;
     if (r.hostId !== playerId) return fail('Only the host can shuffle the seats.');
     const occupants = shuffle(r.seats.filter(Boolean));
-    r.seats = [null, null, null, null];
+    r.seats = Array(r.seats.length).fill(null);
     occupants.forEach((o, i) => (r.seats[i] = o));
     broadcast(r);
   });
@@ -317,6 +441,8 @@ io.on('connection', (socket) => {
     const roster = occupants.map((s) => ({ id: s.id, name: s.name, isBot: s.isBot, connected: s.connected !== false }));
     if (r.gameType === 'snakes') {
       r.game = new SnakesGame(roster);
+    } else if (r.gameType === 'monopoly') {
+      r.game = new MonopolyGame(roster, { settings: r.settings || undefined });
     } else {
       r.game = new HokmGame(roster);
       r.game.startHakemDraw();
@@ -355,11 +481,61 @@ io.on('connection', (socket) => {
     broadcast(r);
   });
 
+  // ── Bazaar. One channel for every move so the client stays simple.
+  socket.on('settings', (patch) => {
+    const r = room();
+    if (!r || r.game || !r.settings) return;
+    if (r.hostId !== playerId) return fail('Only the host can change the settings.');
+    const s = r.settings;
+    if (['buy', 'buyAuction', 'auction'].includes(patch.buyMode)) s.buyMode = patch.buyMode;
+    if (['timed', 'last', 'firstbust'].includes(patch.endMode)) s.endMode = patch.endMode;
+    if ([20, 30, 45, 60, 90, 120].includes(Number(patch.minutes))) s.minutes = Number(patch.minutes);
+    for (const k of ['freeParking', 'doubleGo', 'noJailRent']) {
+      if (typeof patch[k] === 'boolean') s[k] = patch[k];
+    }
+    if ([1000, 1500, 2000, 2500].includes(Number(patch.startCash))) s.startCash = Number(patch.startCash);
+    broadcast(r);
+  });
+
+  socket.on('act', (msg) => {
+    const r = room();
+    if (!r || !r.game || r.gameType !== 'monopoly') return;
+    const g = r.game;
+    const seat = seatOfPlayer(r, playerId);
+    if (seat === -1) return fail('You are not seated.');
+    const a = msg || {};
+    let res;
+    switch (a.type) {
+      case 'roll':       res = g.roll(seat); break;
+      case 'payFine':    res = g.payFine(seat); break;
+      case 'useCard':    res = g.useJailCard(seat); break;
+      case 'buy':        res = g.buy(seat); break;
+      case 'pass':       res = g.pass(seat); break;
+      case 'bid':        res = g.bid(seat, a.amount); break;
+      case 'passBid':    res = g.passBid(seat); break;
+      case 'build':      res = g.build(seat, a.pos); break;
+      case 'sell':       res = g.sell(seat, a.pos); break;
+      case 'mortgage':   res = g.mortgage(seat, a.pos); break;
+      case 'unmortgage': res = g.unmortgage(seat, a.pos); break;
+      case 'bankrupt':   res = g.declareBankrupt(seat); break;
+      case 'endTurn':    res = g.endTurn(seat); break;
+      case 'propose':    res = g.propose(seat, a.to, a.give || {}, a.want || {}); break;
+      case 'respond':    res = g.respond(seat, !!a.accept); break;
+      case 'withdraw':   res = g.withdraw(seat); break;
+      default: return;
+    }
+    if (res && res.error) return fail(res.error);
+    advance(r);
+    broadcast(r);
+  });
+
   socket.on('newGame', () => {
     const r = room();
     if (!r) return;
     if (r.hostId !== playerId) return fail('Only the host can start a new game.');
     clearTimeout(r.timer);
+    clearTimeout(r.endTimer);
+    clearTimeout(r.offerTimer);
     r.game = null;
     broadcast(r);
   });
@@ -404,6 +580,8 @@ io.on('connection', (socket) => {
     }
     if (r.sockets.size === 0) {
       clearTimeout(r.timer);
+      clearTimeout(r.endTimer);
+      clearTimeout(r.offerTimer);
       setTimeout(() => {
         if (rooms.get(r.code) && r.sockets.size === 0) rooms.delete(r.code);
       }, 1000 * 60 * 30);
@@ -418,6 +596,8 @@ setInterval(() => {
   for (const [code, r] of rooms) {
     if (r.sockets.size === 0 && r.createdAt < cutoff) {
       clearTimeout(r.timer);
+      clearTimeout(r.endTimer);
+      clearTimeout(r.offerTimer);
       rooms.delete(code);
     }
   }

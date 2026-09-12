@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.4.0
+
+- **A third game: Bazaar.** A forty-space property-trading game for two to eight
+  players, themed as a Persian bazaar — spice lanes and carpet quarters, four
+  caravanserais on the Silk Road, a waterworks and a lamphouse, and a dungeon to
+  be thrown into.
+- Everything works the way the classic game does: eight colour groups, doubled
+  rent on an unimproved monopoly, even building, four houses to a hotel, a bank
+  holding exactly 32 houses and 12 hotels, caravanserai rents that climb with
+  each one you hold, utilities charging a multiple of your roll, mortgages at
+  half price, jail on three doubles, and ruin when you cannot pay.
+- **Auctions, trading, mortgaging and building** all in, with a proper deed card
+  for every square showing the full rent ladder and which rung you are on.
+- **The host sets the table up first**: buy-or-pass, pass-to-auction or
+  auction-everything; end on a clock, at the first ruin or last one standing;
+  starting cash; and three house rules — the tea house jackpot, double salary for
+  landing exactly on GO, and no rent while the owner is in the dungeon.
+- The board, the two decks of sixteen cards, the pieces and the centre medallion
+  are all drawn from scratch — no borrowed artwork or names.
+- Bots buy, bid, build, mortgage their way out of trouble and propose trades, so
+  a table with empty seats still plays a real game.
+
+## 1.3.1
+
+- **Fixed the miscounted move.** A token sometimes snapped straight to its
+  destination and then hopped again from there, so a roll of 2 looked like it
+  only moved one square. The board now leaves the tokens alone while a move is
+  still being animated.
+- **New dice.** The die is a real cube now — it tumbles in three dimensions,
+  shakes as it goes, and drops onto its face with a bounce and a shadow.
+- **Better ladders.** Rails are layered timber with grain, shading and a light
+  edge, and they narrow towards the top so the ladder leans away from you.
+- **Slimmer snakes.** The bodies were far too thick and swallowed the squares
+  underneath; every snake is about a third narrower, with the markings, scales
+  and heads scaled to match. The numbers are readable again.
+
 ## 1.3.0
 
 - The app now hosts **more than one game**. You pick which one you're creating

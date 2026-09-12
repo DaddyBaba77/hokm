@@ -4,11 +4,12 @@ Online board and card games you host yourself. You send friends a link, they typ
 and you play. No accounts, no installs, no app. Empty seats can be filled with bots, so a
 game works whether you have a full table or none.
 
-Two games so far, picked on the home screen when you create a table:
+Three games so far, picked on the home screen when you create a table:
 
 | Game | Players | |
 |---|---|---|
 | **Hokm** | exactly 4, in two teams | the Persian trick-taking game |
+| **Bazaar** | 2 to 8 | buy the bazaar, and bleed the rest dry |
 | **Snakes & Ladders** | 2 to 8 | a fresh random board every game |
 
 ---
@@ -92,6 +93,40 @@ first time; allow it on private networks.
 
 ---
 
+## Bazaar
+
+A forty-space property game round a Persian bazaar. You go round collecting
+◈200 every time you pass GO, buying the quarters you land on and charging rent
+to everyone who lands on yours. Hold every quarter of one colour and the rent
+doubles and you can start building; four houses on a street become a hotel.
+The four caravanserais charge more the more of them one person holds, and the
+two utilities charge a multiple of whatever you rolled.
+
+Three doubles running and the guard marches you to the dungeon — roll a double,
+pay ◈50 or spend a pardon to get out. Short of cash, you can mortgage a deed for
+half its price or sell buildings back at half what they cost. Run out of both and
+you are ruined, and everything you own goes to whoever you owed.
+
+**The host sets the table up in the lobby before starting**, and everyone watches
+the settings change as they go:
+
+| | |
+|---|---|
+| Landing on something unclaimed | buy it or pass · pass sends it to auction · everything is auctioned |
+| How the game ends | on a clock (30–90 min, richest wins) · at the first ruin · last one standing |
+| Starting cash | ◈1,000 to ◈2,500 |
+| House rules | the tea house jackpot · double salary for landing exactly on GO · no rent while the owner is in the dungeon |
+
+Click any square, or any deed in your list, to see its title card — the full rent
+ladder with your current rung picked out, and the buttons to build, sell,
+mortgage or lift a mortgage. Hit **Offer** next to another player to put a trade
+to them; an offer nobody answers lapses after 45 seconds so the table is never
+stuck. Auctions take over the middle of the board with a bid box and quick
+raises.
+
+Every name, card, colour and piece of art in Bazaar is our own. The mechanics are
+the ones everybody knows; nothing is borrowed from anybody's board.
+
 ## Snakes & Ladders
 
 Everyone starts off the board and races to 100. Roll the die, move that many squares, climb
@@ -146,16 +181,27 @@ sitting — a restart (or a Render sleep) clears the tables.
 ## What's in here
 
 ```
-server.js          rooms, seats, sockets, the turn clock
-src/game.js        the rules — dealing, following suit, trick and round resolution, scoring
-src/bot.js         bot play: trump choice, leads, follows, card counting
-public/            the whole client (one HTML page, one stylesheet, one script)
-test/simulate.js   plays thousands of bot games against the engine and checks every rule
-test/e2e.js        boots the real server and plays a full game over sockets
+server.js             rooms, seats, sockets, the turn clocks, the game registry
+src/game.js           Hokm — dealing, following suit, tricks, rounds, scoring
+src/bot.js            Hokm bot play: trump choice, leads, follows, card counting
+src/snakes.js         Snakes & Ladders — board generation, moves, the house rules
+src/monopoly.js       Bazaar — the 40 spaces, deeds, rent, building, auctions, trades
+src/monopoly-bot.js   Bazaar bot play: buying, bidding, building, raising cash, deals
+public/               the whole client (one HTML page, one stylesheet, a script per game)
+test/simulate.js      thousands of bot Hokm games, checked against every rule
+test/snakes.js        hundreds of Snakes games, checked against every rule
+test/monopoly.js      hundreds of Bazaar games, with every invariant re-checked after
+                      every single action
+test/e2e*.js          boot the real server and play each game to a finish over sockets
 ```
 
 Run the checks with `npm test`.
 
-There are no house-rule toggles — the rules above are baked in. If you want different Kot
-values or a different target score, the numbers live at the top of `src/game.js`
-(`TRICKS_TO_WIN_ROUND`, `POINTS_TO_WIN_GAME`) and in `_endRound` just below.
+Hokm and Snakes have no house-rule toggles — those rules are baked in. If you want
+different Kot values or a different target score, the numbers live at the top of
+`src/game.js` (`TRICKS_TO_WIN_ROUND`, `POINTS_TO_WIN_GAME`) and in `_endRound` just
+below. Bazaar's settings are chosen per table in the lobby; their defaults are
+`DEFAULT_SETTINGS` at the top of `src/monopoly.js`, and the board itself — every
+name, price and rent tier — is the `BOARD` array just above it. The client draws
+the board from `/bazaar-board.json`, which serves that same array, so editing it
+in one place changes both the rules and the screen.
