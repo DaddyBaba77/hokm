@@ -198,7 +198,17 @@ try {
   check(g.winner !== null, `${g.players[g.winner].name} wins`);
   check(!g.players[g.winner].bust, 'the winner is not a ruined player');
   check(g.players.filter((p) => p.bust).length >= 1, 'somebody was ruined');
-  check(g.houses.some((h) => h > 0) || g.housesLeft < 32, 'buildings went up along the way');
+  // Building needs somebody to hold a whole colour, which a short two-player
+  // game does not always produce — so the check is: if a set was held, it was built on.
+  // Building needs somebody to hold a whole colour, which a short two-player
+  // game does not always produce — so the check is: if a set was held, it was built on.
+  const heldASet = Object.values(GROUP_MEMBERS).some((mem) => {
+    const owner = g.owner[mem[0]];
+    return owner !== null && owner !== undefined && mem.every((i) => g.owner[i] === owner);
+  });
+  check(!heldASet || g.houses.some((h) => h > 0) || g.housesLeft < 32,
+    'whoever completed a colour built on it');
+  void BOARD;
   check(!!g.overReason, `it says why: "${g.overReason}"`);
   check(g.players.every((p) => p.cash >= 0), 'nobody finishes in the red');
 

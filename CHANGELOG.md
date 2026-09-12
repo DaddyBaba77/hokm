@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.13.0
+
+- **The deal table.** Press Offer and the table opens: your belongings on one
+  side, theirs on the other, and a tray across the bottom. Drag a note or a deed
+  down into **You give** to offer it, or into **Your get** to ask for it — it
+  lifts off the table, tilts with your hand and throws a shadow, the way a card
+  does in Hokm, and the lane you are over lights up. Tap to take anything back.
+  Nothing is sent until you press the button.
+- **Deals are struck on your own turn**, the way they are at a real table. The
+  Offer button waits for it, and says so.
+- **Everyone at the table sees the offer** — laid out as the two piles that would
+  change hands, with the actual notes and the actual deeds, above the board where
+  nobody can miss it, and a clock on it.
+- **You hand over your own money.** Rent and the tax squares open a mat: your
+  notes are counted out into a bundle, you drag it across to whoever is owed, and
+  press Pay. If you have stepped away it settles itself after twenty seconds.
+- **Fortune and Treasury cards wait for you.** They stay on the table until you
+  press Next instead of flicking past before you have read them.
+- **Nothing teleports without warning.** Being sent to jail, to GO or back a few
+  squares now shows what is about to happen — with a picture of where you are
+  going — and the piece only moves when you press Next. A card that sends you
+  somewhere is read out **before** the piece moves rather than after.
+- **The tax squares carry your gem.** Income Tax and Luxury Tax are the painted
+  card, portrait on the bottom rail and landscape on the right.
+- The notes and deeds in the deal table and on the payment mat are about four
+  times the size they were.
+
 ## 1.12.0
 
 - **Your hand is four times the size.** The rail down the left is as wide as the

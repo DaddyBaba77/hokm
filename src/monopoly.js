@@ -921,6 +921,9 @@ export class MonopolyGame {
 
   propose(from, to, give, want) {
     if (this.phase === 'over') return { error: 'The game is over.' };
+    // Deals are struck on your own turn, the way they are at a real table —
+    // otherwise offers arrive over the top of whatever somebody else is doing.
+    if (from !== this.turn) return { error: 'You can only deal on your own turn.' };
     if (from === to) return { error: 'You cannot trade with yourself.' };
     if (this.bust[from] || this.bust[to]) return { error: 'That player is out.' };
     if (this.offer) return { error: 'There is already an offer on the table.' };

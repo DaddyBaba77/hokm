@@ -285,6 +285,7 @@
     <div class="mono-boardwrap">
       <div class="mono-view" id="mView">
         <div class="mono-board" id="mBoard"></div>
+        <div class="mono-offer hidden" id="mOffer"></div>
         <div class="mono-zoom">
         <button type="button" id="mZoomOut" aria-label="Zoom out">&minus;</button>
         <button type="button" id="mZoomFit">Fit</button>
@@ -296,7 +297,6 @@
 
     <aside class="mono-side">
       <div class="mono-players" id="mPlayers"></div>
-      <div class="mono-offer hidden" id="mOffer"></div>
       <div class="mono-dice" id="mcDice">
         <div class="dice-pair">
           <div class="mono-die" id="die1"></div>
@@ -312,10 +312,34 @@
 
   <div class="mono-auction hidden" id="mAuction"></div>
 
+  <!-- settling up: drag the notes across, then hand them over -->
+  <div id="mPay" class="paymat hidden">
+    <div class="pay-card">
+      <div class="pay-head"><b id="mPayTitle"></b><span id="mPaySub"></span></div>
+      <div class="pay-zone" id="mPayZone">
+        <div class="pz-who" id="mPayWho"></div>
+        <div class="pz-drop" id="mPayDrop"><span class="pz-hint">drag the money here</span></div>
+      </div>
+      <div class="pay-hand" id="mPayHand"></div>
+      <div class="pay-acts">
+        <button type="button" class="btn ghost" id="mPayAuto">Hand it over</button>
+        <button type="button" class="btn primary big" id="mPayGo" disabled>Pay</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mono-notice hidden" id="mNotice">
+    <div class="mn-icon" id="mNoticeIcon"></div>
+    <b id="mNoticeTitle"></b>
+    <p id="mNoticeText"></p>
+    <button type="button" class="btn primary" id="mNoticeOk">Next</button>
+  </div>
+
   <div class="mono-card hidden" id="mCard">
     <div class="mcd-head"><b id="mCardDeck"></b><i id="mCardFa"></i></div>
     <p id="mCardText"></p>
     <span class="mcd-who" id="mCardWho"></span>
+    <button type="button" class="btn primary mcd-ok" id="mCardOk">Next</button>
   </div>
 
   <div id="mDeed" class="overlay hidden">
@@ -325,11 +349,45 @@
     </div>
   </div>
 
-  <div id="mTrade" class="overlay hidden">
-    <div class="modal trademodal">
-      <h2 id="mTradeTitle">Offer</h2>
-      <div id="mTradeBody"></div>
-      <button id="mTradeClose" class="btn ghost">Cancel</button>
+  <!-- the deal table: their side, your side, and the offer laid out between -->
+  <div id="mTrade" class="overlay dealwrap hidden">
+    <div class="dealtable">
+      <div class="deal-head">
+        <h2 id="mTradeTitle">The deal table</h2>
+        <button type="button" id="mTradeClose" class="btn ghost small">Close</button>
+      </div>
+
+      <div class="deal-sides">
+        <section class="deal-side" id="mDealMine">
+          <header class="ds-head"><b id="mDealMineName">You</b><span id="mDealMineCash"></span></header>
+          <div class="ds-notes" id="mDealMineNotes"></div>
+          <div class="ds-props" id="mDealMineProps"></div>
+        </section>
+        <div class="deal-split"><i>&harr;</i></div>
+        <section class="deal-side" id="mDealTheirs">
+          <header class="ds-head"><b id="mDealThemName"></b><span id="mDealThemCash"></span></header>
+          <div class="ds-notes" id="mDealThemNotes"></div>
+          <div class="ds-props" id="mDealThemProps"></div>
+        </section>
+      </div>
+
+      <div class="deal-tray">
+        <div class="tray-lane" id="mTrayGive">
+          <span class="tl-label">You give</span>
+          <div class="tl-items" id="mTrayGiveItems"><span class="tl-hint">drag what you are offering here</span></div>
+          <b class="tl-sum" id="mTrayGiveSum"></b>
+        </div>
+        <div class="tray-lane" id="mTrayWant">
+          <span class="tl-label">You get</span>
+          <div class="tl-items" id="mTrayWantItems"><span class="tl-hint">drag what you are asking for here</span></div>
+          <b class="tl-sum" id="mTrayWantSum"></b>
+        </div>
+      </div>
+
+      <div class="deal-acts">
+        <button type="button" class="btn ghost" id="mDealClear">Clear</button>
+        <button type="button" class="btn primary big" id="mDealSend">Send the offer</button>
+      </div>
     </div>
   </div>
 

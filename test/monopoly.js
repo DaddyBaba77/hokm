@@ -139,6 +139,20 @@ function audit(g, tag) {
   check(!g.jailed[s2], 'two doubles after the run was broken keep you out of jail');
 }
 
+// ─────────────────────────── you deal on your own turn and no one else's
+
+{
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(21) });
+  const mine = g.turn, theirs = (g.turn + 1) % 2;
+  g.owner[1] = mine; g.owner[6] = theirs;
+  const off = g.propose(theirs, mine, { cash: 0, props: [6] }, { cash: 0, props: [1] });
+  check(!!off.error, 'you cannot put an offer up out of turn');
+  check(!g.offer, 'and nothing lands on the table');
+  const on = g.propose(mine, theirs, { cash: 0, props: [1] }, { cash: 0, props: [6] });
+  check(!on.error, 'on your own turn the offer goes up');
+  check(!!g.offer && g.offer.from === mine, 'and it is yours');
+}
+
 // ─────────────────────────── rent maths, checked directly
 
 {

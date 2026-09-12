@@ -97,6 +97,7 @@ window.Bazaar = (function () {
     37: 'elahieh',      39: 'fereshteh',
     2: 'treasury', 17: 'treasury', 33: 'treasury',
     7: 'fortune',  22: 'fortune',  36: 'fortune',
+    4: 'tax',      38: 'tax',
   };
   /** which cut a square wants: the side rails are wide, the others are tall */
   const artFor = (i) => {
@@ -146,6 +147,7 @@ window.Bazaar = (function () {
       cap.appendChild(nm);
       // the two decks say what they are in the painting; the name is enough
       if (sp.price) cap.appendChild(el('div', 'pr', money(sp.price)));
+      else if (sp.tax) cap.appendChild(el('div', 'pr', money(sp.tax)));
       cell.appendChild(cap);
       cell.appendChild(el('div', 'own'));
       cell.appendChild(el('div', 'mortmark', 'MORTGAGED'));
@@ -657,6 +659,24 @@ window.Bazaar = (function () {
     const down = deltas.map((d, i) => ({ d, i })).filter((x) => x.d < 0);
     const up = deltas.map((d, i) => ({ d, i })).filter((x) => x.d > 0);
 
+    // Money you did not choose to spend — rent to another player, or a tax
+    // square — you hand over yourself. Anything you pressed a priced button for
+    // (buying, building, lifting a mortgage) just flies, as it always did.
+    const me = S.seat;
+    if (me !== null && me !== undefined && deltas[me] < 0) {
+      const owed = -deltas[me];
+      const toSeat = up.length === 1 && up[0].d === owed ? up[0].i : null;
+      const here = META.board[S.players[me].pos];
+      if (toSeat !== null || (here && here.tax)) {
+        const flights = () => { runMoney(down, up); };
+        enqueue((fin) => askToPay(owed, toSeat, () => { flights(); fin(); }));
+        return;
+      }
+    }
+    runMoney(down, up);
+  }
+
+  function runMoney(down, up) {
     if (down.length === 1 && up.length === 1 && Math.abs(down[0].d) === up[0].d) {
       const a = anchorFor(down[0].i), b = anchorFor(up[0].i);
       flyMoney(a, b, up[0].d);
@@ -675,6 +695,181 @@ window.Bazaar = (function () {
       flyMoney(bank, b, d);
       cashPop(b, d, true);
     }
+  }
+
+  // ─────────────────────────────────────────── picking things up
+  //
+  // The same feel as a card leaving your hand in Hokm: it lifts off the table,
+  // straightens up, throws a shadow, tilts with the swing of your hand, and the
+  // place it can go lights up. Let go over that place and it lands with a thud;
+  // let go anywhere else and it springs back where it came from.
+
+  /**
+   * Make `el` draggable onto one of `zones`.
+   * opts: { zones: [{ node, accept(el) }], onDrop(zone), onCancel(), tag }
+   */
+  function liftable(el, opts) {
+    let g = null;
+    el.classList.add('liftable');
+
+    const zoneUnder = (x, y) => {
+      for (const z of opts.zones) {
+        const r = z.node.getBoundingClientRect();
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return z;
+      }
+      return null;
+    };
+
+    el.addEventListener('pointerdown', (e) => {
+      if (el.classList.contains('spent') || e.button > 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const r = el.getBoundingClientRect();
+      g = {
+        id: e.pointerId, x0: e.clientX, y0: e.clientY,
+        gx: e.clientX - (r.left + r.width / 2), gy: e.clientY - (r.top + r.height / 2),
+        lastX: e.clientX, tilt: 0, moved: false, zone: null,
+      };
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      el.classList.add('lifting');
+      sfx('flip');
+    });
+
+    el.addEventListener('pointermove', (e) => {
+      if (!g || g.id !== e.pointerId) return;
+      const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+      if (!g.moved && Math.hypot(dx, dy) < 6) return;
+      if (!g.moved) { g.moved = true; el.classList.add('dragging'); }
+      // the tilt follows the swing of your hand, then eases back to flat
+      const swing = e.clientX - g.lastX;
+      g.lastX = e.clientX;
+      g.tilt = Math.max(-14, Math.min(14, g.tilt * 0.72 + swing * 1.5));
+      el.style.transform =
+        `translate(${dx - g.gx}px, ${dy - g.gy}px) rotate(${g.tilt.toFixed(1)}deg) scale(1.1)`;
+      const z = zoneUnder(e.clientX, e.clientY);
+      if (z !== g.zone) {
+        if (g.zone) g.zone.node.classList.remove('drop-ok');
+        g.zone = z;
+        if (z) { z.node.classList.add('drop-ok'); sfx('hop'); }
+      }
+    });
+
+    const finish = (e) => {
+      if (!g || g.id !== e.pointerId) return;
+      const { moved, zone } = g;
+      g = null;
+      el.classList.remove('lifting', 'dragging');
+      for (const z of opts.zones) z.node.classList.remove('drop-ok');
+      if (zone && moved) {
+        el.style.transform = '';
+        // pointerup is followed by a click; that must not count as a second tap
+        el.dataset.noclick = '1';
+        setTimeout(() => { delete el.dataset.noclick; }, 0);
+        opts.onDrop(zone, el);
+      } else {
+        // spring back
+        el.classList.add('springing');
+        el.style.transform = '';
+        setTimeout(() => el.classList.remove('springing'), 260);
+        if (opts.onCancel) opts.onCancel();
+      }
+    };
+    el.addEventListener('pointerup', finish);
+    el.addEventListener('pointercancel', finish);
+    // a plain click still works, for anyone who would rather not drag
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (el.dataset.noclick === '1' || !opts.onClick) return;
+      opts.onClick(el);
+    });
+  }
+
+  /** A fan of notes for `amount`, as one thing you can pick up. */
+  function noteBundle(amount) {
+    const wrap = el('div', 'bundle');
+    const bills = billsFor(amount);
+    const n = Math.min(bills.length, 7);
+    bills.slice(0, n).forEach((v, k) => {
+      const b = el('span', 'bnote');
+      b.style.setProperty('--note', `url("money/${v}.webp")`);
+      b.style.transform = `translate(${(k - (n - 1) / 2) * 22}px, ${-k * 5}px) rotate(${(k - (n - 1) / 2) * 3.6}deg)`;
+      b.style.zIndex = String(n - k);   // the biggest note sits on top of the fan
+      wrap.appendChild(b);
+    });
+    wrap.appendChild(el('b', 'bundle-amt', money(amount)));
+    return wrap;
+  }
+
+  // ─────────────────────────────────────────── settling up
+
+  /**
+   * Hand money over yourself: the notes are counted out into a bundle, you drag
+   * it across to whoever is owed, and press Pay. It settles itself if you are
+   * away from the table, so nobody is ever left waiting on you.
+   */
+  function askToPay(amount, toSeat, done) {
+    const mat = $('mPay');
+    const drop = $('mPayDrop');
+    const hand = $('mPayHand');
+    const go = $('mPayGo');
+    const auto = $('mPayAuto');
+    const to = toSeat === null || toSeat === undefined ? null : S.players[toSeat];
+
+    $('mPayTitle').textContent = to ? `You owe ${to.name}` : 'You owe the bank';
+    $('mPaySub').textContent = money(amount);
+    const who = $('mPayWho');
+    who.innerHTML = '';
+    if (to) {
+      const chip = el('i', 'pz-chip');
+      chip.style.setProperty('--c', to.colour);
+      chip.style.setProperty('--piece', pieceImg(to.token || 'lion'));
+      who.appendChild(chip);
+      who.appendChild(el('span', null, to.name));
+    } else {
+      who.appendChild(el('i', 'pz-chip bank', '⌂'));
+      who.appendChild(el('span', null, 'The bank'));
+    }
+
+    hand.innerHTML = '';
+    drop.querySelectorAll('.bundle').forEach((n) => n.remove());
+    drop.classList.remove('full');
+    go.disabled = true;
+    mat.classList.remove('hidden');
+    void mat.offsetWidth;
+    mat.classList.add('in');
+
+    let settled = false, dropped = false;
+    const bundle = noteBundle(amount);
+    hand.appendChild(bundle);
+
+    const land = () => {
+      if (dropped) return;
+      dropped = true;
+      drop.appendChild(bundle);
+      drop.classList.add('full');
+      bundle.classList.add('landed');
+      go.disabled = false;
+      go.classList.add('ready');
+      sfx('cash');
+    };
+    liftable(bundle, {
+      zones: [{ node: drop }],
+      onDrop: land,
+      onClick: land,          // a tap works too
+    });
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      mat.classList.remove('in');
+      go.classList.remove('ready');
+      setTimeout(() => { mat.classList.add('hidden'); done(); }, 240);
+    };
+    auto.onclick = () => { land(); setTimeout(finish, 260); };
+    go.onclick = () => { if (dropped) finish(); else { land(); setTimeout(finish, 260); } };
+    // never hold the table up
+    const timer = setTimeout(finish, 20000);
   }
 
   // ─────────────────────────────────────────── animation queue
@@ -874,6 +1069,66 @@ window.Bazaar = (function () {
     }, ms);
   }
 
+  /**
+   * A piece about to be picked up and put somewhere else — the guard taking you
+   * in, a card's errand, a step backwards. Say what is about to happen and wait,
+   * so the piece never just vanishes across the board unexplained.
+   */
+  function announceMove(move, done) {
+    const pop = $('mNotice');
+    const who = S.players[move.seat];
+    const dest = META.board[move.to];
+    const mine = move.seat === S.seat;
+    const name = mine ? 'You' : who.name;
+    const verb = mine ? '' : 's';
+    // the picture of where they are going says it faster than any symbol
+    let pic = PHOTOS[move.to] || (STREET_ART[move.to] ? `streets/${STREET_ART[move.to]}-p.webp` : null);
+    let title = 'On the move', text = '';
+    if (move.to === 10 && dest.type === 'jail') {
+      pic = PHOTOS[10];
+      title = mine ? 'Off to jail' : `${who.name} is taken in`;
+      text = `${name} go${verb} straight to the dungeon \u2014 no salary on the way.`;
+    } else if (move.back) {
+      title = 'Back a few squares';
+      text = `${name} step${verb} back to ${dest.name}.`;
+    } else if (move.to === 0) {
+      title = 'Straight to GO';
+      text = `${name} go${verb} all the way round to GO and collect${mine ? '' : 's'} ${money(200)}.`;
+    } else {
+      title = `Off to ${dest.name}`;
+      text = `${name} ${mine ? 'are' : 'is'} sent to ${dest.name}${dest.fa ? ` (${dest.fa})` : ''}.`;
+    }
+    const ic = $('mNoticeIcon');
+    ic.textContent = '';
+    ic.classList.toggle('blank', !pic);
+    ic.style.setProperty('--img', pic ? `url("${pic}")` : 'none');
+    $('mNoticeTitle').textContent = title;
+    $('mNoticeText').textContent = text;
+    pop.classList.toggle('jail', move.to === 10 && dest.type === 'jail');
+    pop.classList.remove('hidden');
+    void pop.offsetWidth;
+    pop.classList.add('in');
+    sfx('flip');
+
+    const ok = $('mNoticeOk');
+    ok.textContent = mine ? 'Next' : 'OK';
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      clearTimeout(timer);
+      ok.removeEventListener('click', close);
+      document.removeEventListener('keydown', onKey);
+      pop.classList.remove('in');
+      setTimeout(() => { pop.classList.add('hidden'); done(); }, 240);
+    };
+    const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') close(); };
+    ok.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    const timer = setTimeout(close, mine ? 30000 : 7000);
+  }
+
+  /** A drawn card stays on the table until somebody says they have read it. */
   function animateCard(card, done) {
     const pop = $('mCard');
     $('mCardDeck').textContent = card.deck === 'fortune' ? 'FORTUNE' : 'TREASURY';
@@ -885,10 +1140,27 @@ window.Bazaar = (function () {
     void pop.offsetWidth;
     pop.classList.add('in');
     sfx('flip');
-    setTimeout(() => {
+
+    const ok = $('mCardOk');
+    let closed = false;
+    // it is the drawer's card to dismiss; everyone else's clears itself
+    const mine = card.seat === S.seat;
+    ok.textContent = mine ? 'Next' : 'OK';
+    ok.classList.toggle('waiting', !mine);
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      clearTimeout(timer);
+      ok.removeEventListener('click', close);
+      document.removeEventListener('keydown', onKey);
       pop.classList.remove('in');
       setTimeout(() => { pop.classList.add('hidden'); done(); }, 260);
-    }, 2400);
+    };
+    const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') close(); };
+    ok.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    // never leave the table stuck behind somebody who has walked away
+    const timer = setTimeout(close, mine ? 30000 : 9000);
   }
 
   // ─────────────────────────────────────────── painting
@@ -973,8 +1245,13 @@ window.Bazaar = (function () {
       if (p.pardons > 0) right.appendChild(el('span', 'mp-pardon', `${p.pardons} pardon${p.pardons > 1 ? 's' : ''}`));
       row.appendChild(right);
       if (p.seat !== S.seat && !p.bust && S.seat !== null && S.phase !== 'over') {
-        const t = el('button', 'mp-trade', 'Offer');
-        t.addEventListener('click', (e) => { e.stopPropagation(); openTrade(p.seat); });
+        // deals are struck on your own turn, so the button waits for it
+        const myTurn = S.turn === S.seat && !S.offer;
+        const t = el('button', 'mp-trade' + (myTurn ? '' : ' off'), 'Offer');
+        t.disabled = !myTurn;
+        t.title = S.offer ? 'There is already an offer on the table.'
+          : myTurn ? `Open the deal table with ${p.name}` : 'You can only deal on your own turn.';
+        if (myTurn) t.addEventListener('click', (e) => { e.stopPropagation(); openTrade(p.seat); });
         row.appendChild(t);
       }
       box.appendChild(row);
@@ -1426,84 +1703,246 @@ window.Bazaar = (function () {
 
   // ─────────────────────────────────────────── trading
 
-  function openTrade(seat) { tradeWith = seat; paintTrade(); $('mTrade').classList.remove('hidden'); }
-  function closeTrade() { tradeWith = null; $('mTrade').classList.add('hidden'); }
+  // ─────────────────────────────────────────── the deal table
+  //
+  // Your belongings on one side, theirs on the other, and a tray underneath.
+  // Drag a deed or a bundle of notes down into your lane to offer it, or into
+  // theirs to ask for it. Nothing is sent until you press the button.
+
+  let deal = null;   // { give: {cash, props:Set}, want: {cash, props:Set} }
+
+  function openTrade(seat) {
+    tradeWith = seat;
+    deal = { give: { cash: 0, props: new Set() }, want: { cash: 0, props: new Set() } };
+    paintTrade();
+    $('mTrade').classList.remove('hidden');
+  }
+  function closeTrade() { tradeWith = null; deal = null; $('mTrade').classList.add('hidden'); }
+
+  /** The stack of notes you hold, one draggable chip per denomination. */
+  function dealNotes(box, seat, lane) {
+    box.innerHTML = '';
+    const counts = {};
+    let left = Math.max(0, Math.round(S.players[seat].cash));
+    for (const note of NOTES) {
+      const n = Math.floor(left / note);
+      if (n > 0) { counts[note] = n; left -= n * note; }
+    }
+    if (!Object.keys(counts).length) { box.appendChild(el('span', 'ds-none', 'no cash')); return; }
+    for (const note of NOTES) {
+      const n = counts[note];
+      if (!n) continue;
+      const chip = el('div', 'dn');
+      chip.style.setProperty('--note', `url("money/${note}.webp")`);
+      chip.dataset.note = String(note);
+      chip.appendChild(el('b', 'dn-x', n > 1 ? '×' + n : ''));
+      chip.title = `${n} × ${money(note)} — drag one down, or tap it`;
+      const add = () => {
+        const side = deal[lane];
+        if (side.cash + note > S.players[seat].cash) { flashLane(lane); return; }
+        side.cash += note;
+        sfx('coin');
+        paintTray();
+      };
+      liftable(chip, {
+        zones: [{ node: $(lane === 'give' ? 'mTrayGive' : 'mTrayWant') }],
+        onDrop: add,
+        onClick: add,
+      });
+      box.appendChild(chip);
+    }
+  }
+
+  /** Their deeds, as little cards you can pull into the tray. */
+  function dealProps(box, seat, lane) {
+    box.innerHTML = '';
+    const owns = S.players[seat].owns;
+    if (!owns.length) { box.appendChild(el('span', 'ds-none', 'no deeds')); return; }
+    for (const i of owns.slice().sort((x, y) => x - y)) {
+      const sp = META.board[i];
+      const colour = sp.type === 'street' ? META.groups[sp.group].colour
+        : sp.type === 'rail' ? '#9a7434' : '#4aa3d6';
+      const card = el('div', 'dp' + (S.mortgaged[i] ? ' mort' : ''));
+      card.style.setProperty('--c', colour);
+      card.dataset.pos = String(i);
+      card.appendChild(el('span', 'dp-band'));
+      const pic = el('span', 'dp-pic');
+      if (STREET_ART[i]) pic.style.setProperty('--img', `url("streets/${STREET_ART[i]}-p.webp")`);
+      card.appendChild(pic);
+      card.appendChild(el('span', 'dp-nm', sp.name.replace(/\s+Railway$/, '').replace(/^Tehran\s+/, '')));
+      const blocked = sp.type === 'street' && membersOf(sp.group).some((x) => S.houses[x] > 0);
+      if (blocked) {
+        card.classList.add('off');
+        card.title = 'Sell the buildings on that colour first.';
+      } else {
+        card.title = `${sp.name} — ${money(sp.price)}`;
+        const add = () => {
+          if (deal[lane].props.has(i)) return;
+          deal[lane].props.add(i);
+          sfx('flip');
+          paintTray();
+        };
+        liftable(card, {
+          zones: [{ node: $(lane === 'give' ? 'mTrayGive' : 'mTrayWant') }],
+          onDrop: add,
+          onClick: add,
+        });
+      }
+      box.appendChild(card);
+    }
+  }
+
+  function flashLane(lane) {
+    const n = $(lane === 'give' ? 'mTrayGive' : 'mTrayWant');
+    n.classList.remove('nope'); void n.offsetWidth; n.classList.add('nope');
+  }
+
+  function paintTray() {
+    for (const lane of ['give', 'want']) {
+      const seat = lane === 'give' ? S.seat : tradeWith;
+      const items = $(lane === 'give' ? 'mTrayGiveItems' : 'mTrayWantItems');
+      const sum = $(lane === 'give' ? 'mTrayGiveSum' : 'mTrayWantSum');
+      const side = deal[lane];
+      items.innerHTML = '';
+      if (!side.cash && !side.props.size) {
+        items.appendChild(el('span', 'tl-hint',
+          lane === 'give' ? 'drag what you are offering here' : 'drag what you are asking for here'));
+      }
+      if (side.cash) {
+        const b = el('div', 'ti cash');
+        b.appendChild(noteBundle(side.cash));
+        b.title = 'tap to take it back';
+        b.addEventListener('click', () => { side.cash = 0; sfx('coin'); paintTray(); });
+        items.appendChild(b);
+      }
+      for (const i of [...side.props].sort((x, y) => x - y)) {
+        const sp = META.board[i];
+        const colour = sp.type === 'street' ? META.groups[sp.group].colour
+          : sp.type === 'rail' ? '#9a7434' : '#4aa3d6';
+        const t = el('div', 'ti dp');
+        t.style.setProperty('--c', colour);
+        t.appendChild(el('span', 'dp-band'));
+        const pic = el('span', 'dp-pic');
+        if (STREET_ART[i]) pic.style.setProperty('--img', `url("streets/${STREET_ART[i]}-p.webp")`);
+        t.appendChild(pic);
+        t.appendChild(el('span', 'dp-nm', sp.name.replace(/\s+Railway$/, '').replace(/^Tehran\s+/, '')));
+        t.title = 'tap to take it back';
+        t.addEventListener('click', () => { side.props.delete(i); sfx('flip'); paintTray(); });
+        items.appendChild(t);
+      }
+      const worth = side.cash + [...side.props].reduce((n, i) => n + (META.board[i].price || 0), 0);
+      sum.textContent = worth ? money(worth) : '';
+      void seat;
+    }
+    const empty = !deal.give.cash && !deal.give.props.size && !deal.want.cash && !deal.want.props.size;
+    $('mDealSend').disabled = empty;
+  }
 
   function paintTrade() {
-    if (tradeWith === null || !S || S.seat === null) return;
+    if (tradeWith === null || !S || S.seat === null || !deal) return;
     const me = S.seat, them = tradeWith;
-    $('mTradeTitle').textContent = `Offer to ${S.players[them].name}`;
-    const body = $('mTradeBody');
-    body.innerHTML = '';
+    $('mTradeTitle').textContent = `Dealing with ${S.players[them].name}`;
+    $('mDealMineName').textContent = `${S.players[me].name} — you`;
+    $('mDealMineCash').textContent = money(S.players[me].cash);
+    $('mDealThemName').textContent = S.players[them].name;
+    $('mDealThemCash').textContent = money(S.players[them].cash);
+    dealNotes($('mDealMineNotes'), me, 'give');
+    dealProps($('mDealMineProps'), me, 'give');
+    dealNotes($('mDealThemNotes'), them, 'want');
+    dealProps($('mDealThemProps'), them, 'want');
+    paintTray();
+  }
 
-    const side = (label, seat, key) => {
-      const col = el('div', 'tr-col');
-      col.appendChild(el('h4', null, label));
-      const cashRow = el('label', 'tr-cashrow');
-      cashRow.appendChild(el('span', null, 'cash'));
-      const cash = el('input', 'tr-cash');
-      cash.type = 'number'; cash.min = 0; cash.max = S.players[seat].cash; cash.value = 0;
-      cash.dataset.key = key;
-      cashRow.appendChild(cash);
-      col.appendChild(cashRow);
-      col.appendChild(el('p', 'tr-holds', `holds ${money(S.players[seat].cash)}`));
-      const list = el('div', 'tr-props');
-      for (const i of S.players[seat].owns) {
-        const sp = META.board[i];
-        const lab = el('label', 'tr-p');
-        const cb = el('input');
-        cb.type = 'checkbox'; cb.value = i; cb.dataset.key = key;
-        const blocked = sp.type === 'street' && membersOf(sp.group).some((x) => S.houses[x] > 0);
-        if (blocked) { cb.disabled = true; lab.title = 'Sell the buildings on that group first.'; lab.classList.add('off'); }
-        lab.appendChild(cb);
-        const dot = el('i');
-        dot.style.background = sp.type === 'street' ? META.groups[sp.group].colour : '#c9b48a';
-        lab.appendChild(dot);
-        lab.appendChild(el('span', null, sp.name));
-        list.appendChild(lab);
-      }
-      col.appendChild(list);
-      return col;
-    };
-
-    const grid = el('div', 'tr-grid');
-    grid.appendChild(side('You give', me, 'give'));
-    grid.appendChild(side('You get', them, 'want'));
-    body.appendChild(grid);
-
-    const go = el('button', 'btn primary big', 'Send the offer');
-    go.addEventListener('click', () => {
-      const grab = (key) => ({
-        cash: Number(body.querySelector(`input.tr-cash[data-key="${key}"]`).value) || 0,
-        props: [...body.querySelectorAll(`input[type=checkbox][data-key="${key}"]:checked`)].map((c) => Number(c.value)),
+  function bindDeal() {
+    $('mDealClear').addEventListener('click', () => {
+      deal = { give: { cash: 0, props: new Set() }, want: { cash: 0, props: new Set() } };
+      paintTray();
+    });
+    $('mDealSend').addEventListener('click', () => {
+      if (tradeWith === null || !deal) return;
+      send({
+        type: 'propose', to: tradeWith,
+        give: { cash: deal.give.cash, props: [...deal.give.props] },
+        want: { cash: deal.want.cash, props: [...deal.want.props] },
       });
-      send({ type: 'propose', to: them, give: grab('give'), want: grab('want') });
       closeTrade();
     });
-    body.appendChild(go);
   }
 
   let lastOfferKey = null;
+  /** One side of an offer, drawn the way it sat in the tray. */
+  function offerPile(cash, props) {
+    const pile = el('div', 'of-pile');
+    if (!cash && !props.length) { pile.appendChild(el('span', 'of-none', 'nothing')); return pile; }
+    if (cash) {
+      const c = el('div', 'of-cash');
+      c.appendChild(noteBundle(cash));
+      pile.appendChild(c);
+    }
+    for (const i of props) {
+      const sp = META.board[i];
+      const colour = sp.type === 'street' ? META.groups[sp.group].colour
+        : sp.type === 'rail' ? '#9a7434' : '#4aa3d6';
+      const card = el('div', 'dp');
+      card.style.setProperty('--c', colour);
+      card.title = `${sp.name} — ${money(sp.price)}`;
+      card.appendChild(el('span', 'dp-band'));
+      const pic = el('span', 'dp-pic');
+      if (STREET_ART[i]) pic.style.setProperty('--img', `url("streets/${STREET_ART[i]}-p.webp")`);
+      card.appendChild(pic);
+      card.appendChild(el('span', 'dp-nm', sp.name.replace(/\s+Railway$/, '').replace(/^Tehran\s+/, '')));
+      pile.appendChild(card);
+    }
+    return pile;
+  }
+
+  /**
+   * The offer on the table. Everybody sees it, laid out as the two piles that
+   * would change hands — not a line of text you have to decode.
+   */
   function paintOffer() {
     const box = $('mOffer');
     const o = S.offer;
-    if (!o || S.seat === null) { box.classList.add('hidden'); lastOfferKey = null; return; }
+    if (!o) { box.classList.add('hidden'); lastOfferKey = null; return; }
     if (o.at !== seenOffer) { seenOffer = o.at; sfx('flip'); lastOfferKey = null; }
     box.classList.remove('hidden');
-    const key = [o.at, Math.round((o.expiresAt || 0) / 1000)].join('|');
+    const key = [o.at, Math.round((o.expiresAt || 0) / 1000), S.seat].join('|');
     if (key === lastOfferKey) return;
     lastOfferKey = key;
     const from = S.players[o.from], to = S.players[o.to];
-    const names = (list) => list.map((i) => META.board[i].name).join(', ') || 'nothing';
     box.innerHTML = '';
-    box.appendChild(el('h4', null, `${from.name} offers ${to.name}`));
-    box.appendChild(el('p', 'tr-line', `${from.name} gives: ${o.giveCash ? money(o.giveCash) + (o.giveProps.length ? ' + ' : '') : ''}${o.giveProps.length ? names(o.giveProps) : (o.giveCash ? '' : 'nothing')}`));
-    box.appendChild(el('p', 'tr-line', `${from.name} wants: ${o.wantCash ? money(o.wantCash) + (o.wantProps.length ? ' + ' : '') : ''}${o.wantProps.length ? names(o.wantProps) : (o.wantCash ? '' : 'nothing')}`));
+
+    const head = el('div', 'of-head');
+    const chip = (p) => {
+      const c = el('i', 'of-chip');
+      c.style.setProperty('--c', p.colour);
+      c.style.setProperty('--piece', pieceImg(p.token || 'lion'));
+      return c;
+    };
+    head.appendChild(chip(from));
+    head.appendChild(el('b', null, from.name));
+    head.appendChild(el('span', 'of-arrow', 'offers'));
+    head.appendChild(chip(to));
+    head.appendChild(el('b', null, to.name));
     if (o.expiresAt) {
       const left = Math.max(0, Math.round((o.expiresAt - Date.now()) / 1000));
-      box.appendChild(el('p', 'tr-exp', `lapses in ${left}s`));
+      head.appendChild(el('span', 'of-exp' + (left <= 10 ? ' low' : ''), `${left}s`));
     }
-    const row = el('div', 'tr-btns');
+    box.appendChild(head);
+
+    const sides = el('div', 'of-sides');
+    const col = (label, cash, props) => {
+      const c = el('div', 'of-col');
+      c.appendChild(el('span', 'of-lab', label));
+      c.appendChild(offerPile(cash, props));
+      return c;
+    };
+    sides.appendChild(col(`${from.name} gives`, o.giveCash, o.giveProps));
+    sides.appendChild(el('div', 'of-swap', '⇄'));
+    sides.appendChild(col(`${from.name} wants`, o.wantCash, o.wantProps));
+    box.appendChild(sides);
+
+    const row = el('div', 'of-btns');
     if (o.to === S.seat) {
       const yes = el('button', 'btn primary', 'Accept');
       yes.addEventListener('click', () => send({ type: 'respond', accept: true }));
@@ -1514,6 +1953,8 @@ window.Bazaar = (function () {
       const w = el('button', 'btn ghost', 'Withdraw');
       w.addEventListener('click', () => send({ type: 'withdraw' }));
       row.appendChild(w);
+    } else {
+      row.appendChild(el('span', 'of-wait', `waiting on ${to.name}`));
     }
     box.appendChild(row);
   }
@@ -1571,19 +2012,29 @@ window.Bazaar = (function () {
     if (!META) return;                       // still loading the board
     if (first) buildBoard();
 
-    // dice, then the move, then any card — in the order they happened
+    // Everything that just happened, played back in the order it happened —
+    // the card that sent you somewhere is read out before the piece moves, and
+    // any other jump gets a word of explanation first.
+    const jobs = [];
     if (S.lastMove && S.lastMove.id > seenMove) {
       const move = S.lastMove;
       const dice = S.dice;
       seenMove = move.id;
-      if (dice && !move.jump) enqueue((done) => animateDice(dice, done));
-      enqueue((done) => animateMove(move, done));
+      if (dice && !move.jump) jobs.push({ at: move.id - 0.5, run: (d) => animateDice(dice, d) });
+      jobs.push({ at: move.id, move, run: (d) => animateMove(move, d) });
     }
     if (S.lastCard && S.lastCard.at > seenCard) {
       const card = S.lastCard;
       seenCard = card.at;
-      enqueue((done) => animateCard(card, done));
+      jobs.push({ at: card.at, card: true, run: (d) => animateCard(card, d) });
     }
+    jobs.sort((a, b) => a.at - b.at);
+    jobs.forEach((j, k) => {
+      if (j.move && (j.move.jump || j.move.back) && !(k > 0 && jobs[k - 1].card)) {
+        enqueue((d) => announceMove(j.move, d));
+      }
+      enqueue(j.run);
+    });
     paint();
 
     clearInterval(clockTimer);
@@ -1618,6 +2069,7 @@ window.Bazaar = (function () {
     $('mDeed').addEventListener('click', (e) => { if (e.target.id === 'mDeed') closeDeed(); });
     $('mTradeClose').addEventListener('click', closeTrade);
     $('mTrade').addEventListener('click', (e) => { if (e.target.id === 'mTrade') closeTrade(); });
+    bindDeal();
   }
 
   return { init, render, reset };
