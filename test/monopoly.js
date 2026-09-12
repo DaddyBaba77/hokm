@@ -100,43 +100,54 @@ function audit(g, tag) {
     }
     check(g.jailTurns[s] <= 3, `${tag}: nobody serves more than three turns`);
   }
-  check(g.doubles <= 2, `${tag}: a third double always goes to the dungeon`);
+  // with the house rule on, a third double ends the turn in the dungeon; with it
+  // off, doubles just keep earning another roll
+  if (g.settings.tripleDouble) check(g.doubles <= 2, `${tag}: a third double always goes to the dungeon`);
   if (g.phase === 'auction') check(g.auction && g.auction.turn !== null, `${tag}: an auction always has a bidder`);
   if (g.phase === 'debt') check(!!g.debt, `${tag}: the debt phase always has a debt`);
   if (g.phase === 'buy') check(!!g.pending, `${tag}: the buy phase always has something to buy`);
 }
 
-// ─────────────────────────── three doubles in a row, and only three
+// ─────────────────────────── the only two roads to the dungeon
 
 {
+  // rolling doubles all day does not put you in jail
   const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(11) });
   const seat = g.turn;
-  g.roll(seat, [2, 2]);
-  check(g.doubles === 1 && !g.jailed[seat], 'one double does not jail you');
-  if (g.phase !== 'roll') g.phase = 'roll';        // skip whatever it landed on
-  g.roll(seat, [3, 3]);
-  check(g.doubles === 2 && !g.jailed[seat], 'two doubles do not jail you either');
-  if (g.phase !== 'roll') g.phase = 'roll';
-  g.roll(seat, [5, 5]);
-  check(g.jailed[seat] === true, 'the third double in a row sends you to jail');
-  check(g.pos[seat] === 10, 'and the piece is in the dungeon');
-  check(g.turn !== seat, 'and the turn passes straight on');
-  check(g.doubles === 0, 'the double count resets for the next player');
+  for (const pair of [[2, 2], [3, 3], [5, 5], [4, 4]]) {
+    if (g.phase !== 'roll') g.phase = 'roll';
+    g.roll(seat, pair);
+  }
+  check(!g.jailed[seat], 'four doubles in a row and you are still a free citizen');
 }
 {
-  // a double, then a plain roll, then two more doubles is still not three in a row
-  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(12) });
+  // the corner does
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(13) });
   const seat = g.turn;
-  g.roll(seat, [2, 2]);
-  if (g.phase !== 'roll') g.phase = 'roll';
-  g.roll(seat, [2, 3]);
-  check(g.doubles === 0, 'a plain roll clears the run of doubles');
-  const s2 = g.turn;
-  g.phase = 'roll';
-  g.roll(s2, [1, 1]);
-  if (g.phase !== 'roll') g.phase = 'roll';
-  g.roll(s2, [4, 4]);
-  check(!g.jailed[s2], 'two doubles after the run was broken keep you out of jail');
+  g.pos[seat] = 26;
+  g.roll(seat, [2, 2]);           // 26 + 4 = 30, go to jail
+  check(g.jailed[seat] === true, 'the go-to-jail corner sends you in');
+  check(g.pos[seat] === 10, 'and the piece lands in the dungeon');
+}
+{
+  // and so does the card that says so
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(14) });
+  const seat = g.turn;
+  const card = FORTUNE.find((c) => c.act && c.act.type === 'jail');
+  check(!!card, 'a fortune card sends you to the dungeon');
+  g._applyCard(seat, card, {});
+  check(g.jailed[seat] === true, 'and taking it puts you there');
+}
+{
+  // the house rule is still there for anyone who wants it
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }],
+    { rng: mulberry(12), settings: { tripleDouble: true } });
+  const seat = g.turn;
+  for (const pair of [[2, 2], [3, 3], [5, 5]]) {
+    if (g.phase !== 'roll') g.phase = 'roll';
+    g.roll(seat, pair);
+  }
+  check(g.jailed[seat] === true, 'with the house rule on, the third double jails you');
 }
 
 // ─────────────────────────── you deal on your own turn and no one else's

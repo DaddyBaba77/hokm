@@ -171,6 +171,7 @@ export const DEFAULT_SETTINGS = {
   freeParking: false,  // the jackpot house rule
   doubleGo: false,     // landing exactly on GO pays double
   noJailRent: false,   // an owner in the dungeon collects nothing
+  tripleDouble: false, // three doubles in a row sends you to jail
   startCash: START_CASH,
 };
 
@@ -346,7 +347,8 @@ export class MonopolyGame {
 
     if (isDouble) {
       this.doubles += 1;
-      if (this.doubles === 3) {
+      // off by default: the only ways to the dungeon are the corner and a card
+      if (this.settings.tripleDouble && this.doubles === 3) {
         this.note(`${this.name(seat)} rolls a third double — straight to jail.`);
         this._sendToJail(seat);
         this._endTurn();

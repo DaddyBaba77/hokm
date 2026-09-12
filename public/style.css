@@ -71,6 +71,7 @@ body::before {
 }
 .icon:hover { border-color: rgba(230,189,109,.6); }
 .icon.off { opacity: .4; }
+.icon.on { color: var(--gold); border-color: var(--gold); background: rgba(230,189,109,.18); }
 
 input {
   font: inherit; color: var(--ink);
@@ -959,7 +960,7 @@ input::placeholder { color: #6d80a0; }
 .mono-zoom #mFollow { font-size: .68rem; font-weight: 600; color: var(--muted); }
 .mono-zoom #mFollow.on { color: #ffe6b4; border-color: var(--gold); background: rgba(230,189,109,.2); }
 .mono-side {
-  flex: 0 0 278px; display: flex; flex-direction: column; gap: 8px;
+  flex: 0 0 clamp(278px, 22vw, 400px); display: flex; flex-direction: column; gap: 8px;
   min-height: 0; overflow: hidden; padding-bottom: 40px;
 }
 
@@ -1174,10 +1175,12 @@ input::placeholder { color: #6d80a0; }
   position: absolute; inset: 0; z-index: 0;
   background: var(--img) center top / cover no-repeat;
 }
-.s-bottom.art .pic { top: calc(var(--ew) * .36); }
-.s-top.art    .pic { bottom: calc(var(--ew) * .36); }
-.s-left.art   .pic { right: calc(var(--ew) * .36); }
-.s-right.art  .pic { left: calc(var(--ew) * .36); }
+.sq.art { --ob: 0px; }
+.sq.art.owned { --ob: calc(var(--ew) * .2); }
+.s-bottom.art .pic { top: calc(var(--ew) * .36 + var(--ob)); }
+.s-top.art    .pic { bottom: calc(var(--ew) * .36 + var(--ob)); }
+.s-left.art   .pic { right: calc(var(--ew) * .36 + var(--ob)); }
+.s-right.art  .pic { left: calc(var(--ew) * .36 + var(--ob)); }
 .sq.art.noband .pic { inset: 0; }
 
 .sq.art .cap {
@@ -1205,13 +1208,19 @@ input::placeholder { color: #6d80a0; }
   font-size: clamp(5px, calc(var(--ew) * .21 * var(--nms, 1)), 19px);
 }
 /* the price rejoins the strip on the side rails instead of standing on its end */
+/* The price rides on the corner of the painting, opposite the owner's piece, so
+   it can be read from across the table without squeezing the street name. */
+/* the price sits on the strip's right shoulder, clear of the painting's title */
 .sq.art .cap .pr {
-  flex: 0 0 auto; position: static; writing-mode: horizontal-tb; transform: none;
-  margin: 0; padding: 0 3px; top: auto; left: auto; right: auto;
-  font-size: clamp(4px, calc(var(--ew) * .15), 11px);
-  background: rgba(46,36,21,.11);
+  position: absolute; z-index: 3; right: 3px; bottom: 100%; margin: 0 0 2px;
+  writing-mode: horizontal-tb; transform: none; top: auto; left: auto;
+  padding: .06em .38em; border-radius: 999px;
+  font-size: clamp(7px, calc(var(--ew) * .215), 21px); font-weight: 900;
+  line-height: 1.2; color: #ffeccb; background: rgba(6,14,30,.82);
+  box-shadow: 0 0 0 1px rgba(230,189,109,.55), 0 1px 4px rgba(0,0,0,.55);
+  text-shadow: none; pointer-events: none;
 }
-.sq.art .cap .pr.ghosted { background: none; }
+
 /* who owns it reads as a coloured edge round the picture */
 .sq.art.owned { box-shadow: inset 0 0 0 2px var(--owncol), inset 0 0 10px rgba(0,0,0,.5); }
 .sq.art .mortmark { color: #ffd0c8; text-shadow: 0 1px 3px rgba(0,0,0,.9); z-index: 3; }
@@ -1219,7 +1228,7 @@ input::placeholder { color: #6d80a0; }
 
 /* ── the running count as a piece walks ── */
 .stepno {
-  position: absolute; z-index: 6; top: 50%; left: 50%;
+  position: absolute; z-index: 12; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   min-width: 1.5em; padding: .1em .3em; border-radius: 999px;
   font-size: clamp(8px, calc(var(--ew) * .3), 22px); font-weight: 900;
@@ -1246,6 +1255,28 @@ input::placeholder { color: #6d80a0; }
   80%  { transform: translate(-50%, -58%) scale(1.1); opacity: 1; }
   100% { transform: translate(-50%, -58%) scale(1); opacity: 0; }
 }
+
+/* ── the owner's sash: a band of their colour against the property's own ── */
+.ownband {
+  position: absolute; z-index: 2; display: none;
+  align-items: center; justify-content: center; overflow: hidden;
+  background: var(--c); color: #08152a;
+  font-size: clamp(4px, calc(var(--ew) * .145), 13px); font-weight: 900;
+  letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255,255,255,.35);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+}
+.sq.owned .ownband { display: flex; }
+.s-bottom.art .ownband { top: calc(var(--ew) * .36); left: 0; right: 0; height: var(--ob); }
+.s-top.art    .ownband { bottom: calc(var(--ew) * .36); left: 0; right: 0; height: var(--ob); }
+/* on the side rails the sash runs the depth of the square, so it carries no text */
+.s-left.art   .ownband { right: calc(var(--ew) * .36); top: 0; bottom: 0; width: var(--ob); font-size: 0; }
+.s-right.art  .ownband { left: calc(var(--ew) * .36); top: 0; bottom: 0; width: var(--ob); font-size: 0; }
+/* the squares with no colour band of their own put the sash on the outer edge */
+.s-bottom.art.noband .ownband { top: 0; }
+.s-top.art.noband    .ownband { bottom: 0; }
+.s-left.art.noband   .ownband { right: 0; }
+.s-right.art.noband  .ownband { left: 0; }
 
 /* ── whose square is this ──
    Their piece and their name on a small dark pill, tucked into the quiet
@@ -1279,7 +1310,7 @@ input::placeholder { color: #6d80a0; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* the tall squares are too narrow for a name beside the piece */
-.s-bottom .om-name, .s-top .om-name { display: none; }
+.s-bottom .ownmark, .s-top .ownmark { display: none; }
 .s-bottom .ownmark, .s-top .ownmark { padding-right: 1px; }
 /* an owned square's name strip picks up a wash of their colour */
 .sq.art.owned .cap {
@@ -1351,11 +1382,11 @@ input::placeholder { color: #6d80a0; }
   box-shadow: 0 0 calc(10px + var(--glow, 0) * 34px) rgba(255,196,96,calc(.12 + var(--glow, 0) * .5));
 }
 .dice-pair {
-  display: flex; align-items: center; justify-content: center; gap: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 18px;
   perspective: 620px; perspective-origin: 50% 45%;
 }
 .dice-charge {
-  width: 100%; height: 3px; border-radius: 999px; overflow: hidden;
+  width: 100%; height: 5px; border-radius: 999px; overflow: hidden;
   background: rgba(255,255,255,.08);
 }
 .dice-charge i {
@@ -1364,16 +1395,16 @@ input::placeholder { color: #6d80a0; }
   transition: width .06s linear;
 }
 .dice-hint {
-  font-size: .6rem; letter-spacing: .1em; text-transform: uppercase;
+  font-size: .74rem; letter-spacing: .1em; text-transform: uppercase;
   color: var(--muted); min-height: .8em; text-align: center;
 }
 .mono-dice.ready .dice-hint { color: var(--gold); }
 .dice-hint.counting {
-  color: #ffe6b4; font-size: .74rem; font-weight: 800; letter-spacing: .06em;
+  color: #ffe6b4; font-size: 1rem; font-weight: 800; letter-spacing: .06em;
   font-variant-numeric: tabular-nums; text-transform: none;
 }
 .mono-die {
-  --size: 46px; --half: 23px;
+  --size: clamp(46px, 4.6vw, 74px); --half: calc(var(--size) / 2);
   position: relative; width: var(--size); height: var(--size);
   transform-style: preserve-3d;
   transition: transform .8s cubic-bezier(.23,.86,.28,1);
@@ -1406,7 +1437,9 @@ input::placeholder { color: #6d80a0; }
    They stand on painted photographs, so they have to shout: a dark outline, a
    thick ring in the player's own colour, a halo of it, and a shadow on the
    board underneath. Everything is sized off --r so it holds up at any zoom. */
-.mono-tokens { position: absolute; inset: 0; pointer-events: none; }
+/* the pieces ride above everything painted on the squares — the colour band,
+   the owner's sash, the price chip — so a piece is never half-buried */
+.mono-tokens { position: absolute; inset: 0; pointer-events: none; z-index: 9; }
 .tok {
   --r: 34px;
   position: absolute; top: 0; left: 0;
@@ -1460,15 +1493,17 @@ input::placeholder { color: #6d80a0; }
 .tok.leap { transition: transform .5s cubic-bezier(.3,-0.4,.4,1.5); }
 
 /* ── the side panel ── */
-.mono-players { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; max-height: 34%; overflow-y: auto; }
+.mono-players { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; max-height: 40%; overflow-y: auto; }
 .mp {
-  display: flex; align-items: center; gap: 7px; padding: .3rem .45rem;
+  display: flex; align-items: center; gap: 9px; padding: .45rem .55rem;
   background: rgba(8,20,40,.6); border: 1px solid rgba(230,189,109,.16);
-  border-radius: 8px; position: relative;
+  border-radius: 10px; position: relative; cursor: pointer;
 }
+.mp:hover { border-color: rgba(230,189,109,.45); background: rgba(14,30,56,.8); }
+.mp.peeking { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(230,189,109,.35), 0 0 16px rgba(230,189,109,.18); }
 .mp.turn { border-color: rgba(230,189,109,.65); box-shadow: 0 0 12px rgba(230,189,109,.2); }
 .mp.bust { opacity: .42; }
-.mp-chip { width: 25px; height: 25px; flex: 0 0 auto; }
+.mp-chip { width: 40px; height: 40px; flex: 0 0 auto; }
 .mp-chip {
   position: relative; border-radius: 50%; border: 1.5px solid var(--c);
   background:
@@ -1481,18 +1516,18 @@ input::placeholder { color: #6d80a0; }
   filter: brightness(1.12) contrast(1.06);
 }
 .mp-mid { flex: 1 1 auto; min-width: 0; }
-.mp-name { font-size: .78rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-name { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mp.me .mp-name { color: var(--gold); }
 .mp-name .away { color: #ff9a8a; font-weight: 400; font-size: .68rem; }
-.mp-sub { font-size: .64rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-sub { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mp-right { text-align: right; flex: 0 0 auto; }
-.mp-right b { display: block; font-size: .82rem; color: var(--gold); font-variant-numeric: tabular-nums; }
-.mp-jail, .mp-pardon { display: block; font-size: .58rem; color: #ff9a8a; }
+.mp-right b { display: block; font-size: 1.15rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+.mp-jail, .mp-pardon { display: block; font-size: .7rem; color: #ff9a8a; }
 .mp-pardon { color: #7ef0a0; }
 .mp-trade {
   flex: 0 0 auto; background: rgba(230,189,109,.12); color: var(--gold);
   border: 1px solid rgba(230,189,109,.34); border-radius: 6px;
-  font-size: .62rem; padding: .16rem .34rem; cursor: pointer;
+  font-size: .76rem; padding: .26rem .5rem; cursor: pointer;
 }
 .mp-trade:hover { background: rgba(230,189,109,.26); }
 
@@ -1596,25 +1631,56 @@ input::placeholder { color: #6d80a0; }
 .mcd-who { display: block; margin-top: .6rem; font-size: .7rem; opacity: .6; }
 
 /* ── the deed card ── */
-.deedmodal { max-width: 340px; }
-.deedcard {
-  background: var(--card-face); color: #17223a; border-radius: 8px; overflow: hidden;
-  box-shadow: 0 10px 26px rgba(0,0,0,.5); text-align: left;
+/* ── the deed card: big enough to read across the room, and it turns over ── */
+.deedmodal { max-width: min(94vw, 620px); }
+.deedflip {
+  position: relative; perspective: 1400px; cursor: pointer;
+  min-height: 430px; margin-bottom: .4rem;
 }
-.dc-top { padding: .7rem .8rem .55rem; text-align: center; color: #12203a; }
+.deedflip > * {
+  transition: transform .5s cubic-bezier(.3,.9,.3,1);
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.deedflip .deedcard { transform: rotateY(0deg); }
+.deedflip .deedface {
+  position: absolute; inset: 0; transform: rotateY(180deg);
+}
+.deedflip.flipped .deedcard { transform: rotateY(-180deg); }
+.deedflip.flipped .deedface { transform: rotateY(0deg); }
+
+.deedcard {
+  background: var(--card-face); color: #17223a; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 14px 34px rgba(0,0,0,.55); text-align: left;
+}
+.dc-top { padding: 1.1rem 1rem .9rem; text-align: center; color: #12203a; }
 .dc-top.rail, .dc-top.util { background: #d9d0b8; }
-.dc-kind { font-size: .6rem; font-weight: 800; letter-spacing: .22em; opacity: .7; }
-.dc-name { font-size: 1.05rem; font-weight: 900; letter-spacing: .02em; }
-.dc-rent { width: 100%; border-collapse: collapse; margin: .4rem 0; }
-.dc-rent td { padding: .2rem .8rem; font-size: .8rem; }
+.dc-kind { font-size: 1.1rem; font-weight: 800; letter-spacing: .22em; opacity: .75; }
+.dc-name { font-size: 2.1rem; font-weight: 900; letter-spacing: .01em; line-height: 1.1; }
+.dc-rent { width: 100%; border-collapse: collapse; margin: .6rem 0; }
+.dc-rent td { padding: .34rem 1.1rem; font-size: 1.4rem; }
 .dc-rent td:last-child { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .dc-rent tr.on { background: rgba(230,189,109,.34); }
 .dc-rent tr.on td { font-weight: 800; }
-.dc-foot { padding: .45rem .8rem .7rem; font-size: .66rem; opacity: .7; border-top: 1px solid rgba(0,0,0,.12); }
-.dc-note { padding: .6rem .8rem; margin: 0; font-size: .82rem; }
-.dc-owner { margin: .6rem 0 .2rem; font-size: .78rem; color: rgba(244,239,227,.7); }
+.dc-foot { padding: .7rem 1rem 1rem; font-size: 1.05rem; opacity: .75; border-top: 1px solid rgba(0,0,0,.12); line-height: 1.4; }
+
+/* the painted face of the same card */
+.deedface {
+  display: flex; flex-direction: column; border-radius: 10px; overflow: hidden;
+  background: #e8dcbd; box-shadow: 0 14px 34px rgba(0,0,0,.55);
+}
+.df-pic { flex: 1 1 auto; min-height: 0; background: var(--img) center top / cover no-repeat, #d9cdb0; }
+.df-bar {
+  flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: .6rem .9rem; background: linear-gradient(to top, #faf4e4, #efe5cb);
+  border-top: 5px solid var(--c, #9a7434); color: #2a2113;
+}
+.df-bar b { font-size: 1.5rem; font-weight: 900; letter-spacing: .01em; }
+.df-bar span { font-size: 1.5rem; font-weight: 900; color: #6b4d16; font-variant-numeric: tabular-nums; }
+.dc-turn { margin: 0 0 .5rem; font-size: .8rem; color: var(--muted); letter-spacing: .04em; }
+.dc-note { padding: .9rem 1rem; margin: 0; font-size: 1.25rem; line-height: 1.45; color: #2a3550; }
+.dc-owner { margin: 0; padding: .2rem 1rem 1rem; font-size: 1.1rem; font-weight: 700; color: #4a3a1c; }
 .dc-acts { display: flex; flex-direction: column; gap: 6px; margin-top: .5rem; }
-.dc-acts .btn { width: 100%; }
+.dc-acts .btn { width: 100%; font-size: 1rem; padding: .55rem 1rem; }
 .dc-acts .btn:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── the trade panel ── */
@@ -1992,6 +2058,19 @@ input::placeholder { color: #6d80a0; }
   letter-spacing: 0; color: var(--gold);
   font-variant-numeric: tabular-nums; margin-left: auto; line-height: 1;
 }
+
+.peek-back {
+  display: block; width: 100%; margin: 0 0 5px; padding: .2rem .4rem;
+  font-family: inherit; font-size: .68rem; text-align: left; cursor: pointer;
+  background: rgba(230,189,109,.14); color: var(--gold);
+  border: 1px solid rgba(230,189,109,.34); border-radius: 7px;
+}
+.peek-back:hover { background: rgba(230,189,109,.26); }
+.peek-back.hidden { display: none; }
+/* somebody else's hand, so you never mistake it for yours */
+.mono-hand.peeking .hand-cash,
+.mono-hand.peeking .hd-group { border-color: rgba(150,200,255,.4); }
+.mono-hand.peeking .hand-label b { color: #bfe0ff; }
 
 .notes { display: flex; flex-direction: column; align-items: stretch; }
 .note-row {

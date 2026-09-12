@@ -27,7 +27,9 @@ window.Bazaar = (function () {
   let queue = [], running = false;
   let seenMove = 0, seenCard = 0, seenOffer = 0;
   let deedOpen = null;              // which deed card is on screen
+  let deedFace = false;             // showing the painting rather than the rents
   let throwEnergy = 0.4;            // how hard the last throw was shaken, 0–1
+  let peekSeat = null;              // whose hand the left rail is showing, null = yours
   let tradeWith = null;             // trade panel target
 
   // ─────────────────────────────────────────── geometry
@@ -145,9 +147,12 @@ window.Bazaar = (function () {
       if (side === 'left' || side === 'right') nm.appendChild(el('span', null, sp.name));
       else for (const word of sp.name.split(' ')) nm.appendChild(el('span', null, word));
       cap.appendChild(nm);
-      // the two decks say what they are in the painting; the name is enough
+      // the price is a chip perched on the strip's right shoulder, out of the
+      // flow so it never squeezes the name (the two decks need none — their
+      // painting says what they are)
       if (sp.price) cap.appendChild(el('div', 'pr', money(sp.price)));
       else if (sp.tax) cap.appendChild(el('div', 'pr', money(sp.tax)));
+      if (sp.price) cell.appendChild(el('div', 'ownband'));
       cell.appendChild(cap);
       cell.appendChild(el('div', 'own'));
       cell.appendChild(el('div', 'mortmark', 'MORTGAGED'));
@@ -558,7 +563,8 @@ window.Bazaar = (function () {
 
   /** Where on screen a player's money lives: their piece if you can see it, else their row. */
   function anchorFor(seat) {
-    if (S && seat === S.seat) {
+    // the rail is only the right target while it is showing your own hand
+    if (S && seat === S.seat && handSeat() === seat) {
       const hand = $('mNotes');
       if (hand) {
         const r = hand.getBoundingClientRect();
@@ -1182,6 +1188,8 @@ window.Bazaar = (function () {
         strip.style.background = '';
         cell.style.removeProperty('--owncol');
         if (mark && mark.dataset.at !== '') { mark.dataset.at = ''; mark.innerHTML = ''; }
+        const bandEl = cell.querySelector('.ownband');
+        if (bandEl && bandEl.dataset.at !== '') { bandEl.dataset.at = ''; bandEl.textContent = ''; }
       } else {
         cell.classList.add('owned');
         const p = S.players[own];
@@ -1198,6 +1206,15 @@ window.Bazaar = (function () {
           mark.appendChild(chip);
           mark.appendChild(el('span', 'om-name', p ? p.name : ''));
           mark.title = p ? `Held by ${p.name}` : '';
+        }
+        // a full-width sash of their colour against the property's own band,
+        // so you can read the whole board's ownership at a glance
+        const bandEl = cell.querySelector('.ownband');
+        if (bandEl && bandEl.dataset.at !== String(own)) {
+          bandEl.dataset.at = String(own);
+          bandEl.style.setProperty('--c', col);
+          bandEl.textContent = p ? p.name : '';
+          bandEl.title = p ? `Held by ${p.name}` : '';
         }
       }
       cell.classList.toggle('mortgaged', !!S.mortgaged[sp.i]);
@@ -1226,8 +1243,18 @@ window.Bazaar = (function () {
     const box = $('mPlayers');
     box.innerHTML = '';
     for (const p of S.players) {
-      const row = el('div', 'mp' + (p.seat === S.turn && S.phase !== 'over' ? ' turn' : '') + (p.bust ? ' bust' : '') + (p.seat === S.seat ? ' me' : ''));
+      const row = el('div', 'mp' + (p.seat === S.turn && S.phase !== 'over' ? ' turn' : '')
+        + (p.bust ? ' bust' : '') + (p.seat === S.seat ? ' me' : '')
+        + (handSeat() === p.seat ? ' peeking' : ''));
       row.style.setProperty('--c', p.colour);
+      row.title = `Look through ${p.seat === S.seat ? 'your own' : p.name + "'s"} money and deeds`;
+      row.addEventListener('click', () => {
+        peekSeat = p.seat === S.seat ? null : p.seat;
+        lastPlayerKey = null; lastDeedKey = null;
+        const notes = $('mNotes');
+        if (notes) delete notes.dataset.at;
+        paint();
+      });
       const chip = el('div', 'mp-chip');
       chip.style.setProperty('--piece', pieceImg(p.token || 'lion'));
       row.appendChild(chip);
@@ -1486,14 +1513,26 @@ window.Bazaar = (function () {
 
   // ─────────────────────────────────────────── my deeds
 
-  /** Your cash, piled up the way you would hold it: biggest note on top. */
+  /** Whose hand the left rail is showing — yours unless you clicked somebody. */
+  function handSeat() {
+    if (peekSeat !== null && S && S.players[peekSeat] && !S.players[peekSeat].bust) return peekSeat;
+    if (peekSeat !== null) peekSeat = null;
+    return S ? S.seat : null;
+  }
+
+  /** Cash piled up the way you would hold it: biggest note on top. */
   function paintNotes() {
     const box = $('mNotes');
-    const me = S.seat;
+    const me = handSeat();
     const cash = me === null || me === undefined ? 0 : S.players[me].cash;
+    const mine = me === S.seat;
     $('mHandTotal').textContent = money(cash);
-    if (box.dataset.at === String(cash)) return;
-    box.dataset.at = String(cash);
+    $('mCashLabel').firstChild.nodeValue = mine ? 'MONEY ' : `${S.players[me] ? S.players[me].name.toUpperCase() : ''} `;
+    $('mHand').classList.toggle('peeking', !mine);
+    const back = $('mPeekBack');
+    if (back) back.classList.toggle('hidden', mine);
+    if (box.dataset.at === String(me) + ':' + String(cash)) return;
+    box.dataset.at = String(me) + ':' + String(cash);
 
     const counts = {};
     let left = Math.max(0, Math.round(cash));
@@ -1522,9 +1561,9 @@ window.Bazaar = (function () {
 
   let lastDeedKey = null;
   function paintDeeds() {
-    const me = S.seat;
+    const me = handSeat();
     const key = me === null || me === undefined ? 'none'
-      : S.players[me].owns.join(',') + '|' + S.houses.join('') + '|' + S.mortgaged.map((m) => (m ? 1 : 0)).join('');
+      : me + '|' + S.players[me].owns.join(',') + '|' + S.houses.join('') + '|' + S.mortgaged.map((m) => (m ? 1 : 0)).join('');
     if (key === lastDeedKey) return;
     lastDeedKey = key;
     const box = $('mDeeds');
@@ -1535,7 +1574,12 @@ window.Bazaar = (function () {
       return;
     }
     const mine = S.players[me].owns;
-    if (!mine.length) { box.appendChild(el('p', 'hand-empty', 'No deeds yet \u2014 buy the square you land on.')); return; }
+    if (!mine.length) {
+      box.appendChild(el('p', 'hand-empty', me === S.seat
+        ? 'No deeds yet \u2014 buy the square you land on.'
+        : `${S.players[me].name} holds no deeds yet.`));
+      return;
+    }
 
     const byGroup = {};
     for (const i of mine) {
@@ -1589,7 +1633,7 @@ window.Bazaar = (function () {
 
   // ─────────────────────────────────────────── the deed card
 
-  function openDeed(i) { deedOpen = i; paintDeed(); $('mDeed').classList.remove('hidden'); }
+  function openDeed(i) { deedOpen = i; deedFace = false; paintDeed(); $('mDeed').classList.remove('hidden'); }
   function closeDeed() { deedOpen = null; $('mDeed').classList.add('hidden'); }
 
   function paintDeed() {
@@ -1652,7 +1696,33 @@ window.Bazaar = (function () {
     const status = el('p', 'dc-owner');
     status.textContent = own === null ? 'Unclaimed.' : `Held by ${S.players[own].name}${S.mortgaged[i] ? ' — mortgaged' : ''}.`;
     card.appendChild(status);
-    body.appendChild(card);
+
+    // the other side of the card: the painting, with what it costs
+    const art = artFor(i) || (STREET_ART[i] ? `streets/${STREET_ART[i]}-p.webp` : null);
+    const face = el('div', 'deedface');
+    if (art) {
+      const pic = el('div', 'df-pic');
+      pic.style.setProperty('--img', `url("streets/${STREET_ART[i]}-p.webp")`);
+      face.appendChild(pic);
+    }
+    const bar = el('div', 'df-bar');
+    if (sp.type === 'street') bar.style.setProperty('--c', META.groups[sp.group].colour);
+    bar.appendChild(el('b', null, sp.name));
+    bar.appendChild(el('span', null, money(sp.price)));
+    face.appendChild(bar);
+
+    const flip = el('div', 'deedflip' + (deedFace ? ' flipped' : ''));
+    flip.appendChild(card);
+    flip.appendChild(face);
+    flip.title = 'Click to turn the card over';
+    const hint = el('p', 'dc-turn', deedFace ? 'click the card for the rents' : 'click the card to see its face');
+    flip.addEventListener('click', () => {
+      deedFace = !deedFace;
+      flip.classList.toggle('flipped', deedFace);
+      hint.textContent = deedFace ? 'click the card for the rents' : 'click the card to see its face';
+    });
+    body.appendChild(flip);
+    body.appendChild(hint);
 
     // what I can do with it
     const acts = el('div', 'dc-acts');
@@ -2065,6 +2135,12 @@ window.Bazaar = (function () {
       .catch(() => {});
     // on a touch screen there is no hover, so the label opens the pile
     $('mCashLabel').addEventListener('click', () => $('mCashBox').classList.toggle('open'));
+    $('mPeekBack').addEventListener('click', () => {
+      peekSeat = null;
+      lastPlayerKey = null; lastDeedKey = null;
+      delete $('mNotes').dataset.at;
+      paint();
+    });
     $('mDeedClose').addEventListener('click', closeDeed);
     $('mDeed').addEventListener('click', (e) => { if (e.target.id === 'mDeed') closeDeed(); });
     $('mTradeClose').addEventListener('click', closeTrade);

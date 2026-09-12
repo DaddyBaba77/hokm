@@ -6,7 +6,7 @@ const SUIT_NAME = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
 const RED = new Set(['H', 'D']);
 const RANK_LABEL = { T: '10' };
 const RANK_VALUE = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
-const VERSION = '1.13.0';
+const VERSION = '1.14.0';
 const TEAM_NAME = { A: 'Azure', B: 'Crimson' };
 const POINTS_TO_WIN = 7;
 
@@ -1235,6 +1235,42 @@ $('chatForm').onsubmit = (e) => {
   socket.emit('chat', { text: v });
   $('chatInput').value = '';
 };
+// full screen, the way F11 does it — with a button, because phones have no F11
+const fullEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+function paintFull() {
+  const b = $('fullBtn');
+  if (!b) return;
+  const on = !!fullEl();
+  b.classList.toggle('on', on);
+  b.title = on ? 'Leave full screen' : 'Full screen';
+  b.innerHTML = on ? '&#9975;' : '&#9974;';
+}
+$('fullBtn').onclick = async () => {
+  try {
+    if (fullEl()) {
+      await (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen());
+    } else {
+      const root = document.documentElement;
+      await (root.requestFullscreen ? root.requestFullscreen({ navigationUI: 'hide' })
+        : root.webkitRequestFullscreen());
+    }
+  } catch (_) {
+    toast('This browser will not let the page go full screen — try F11.');
+  }
+  paintFull();
+};
+document.addEventListener('fullscreenchange', paintFull);
+document.addEventListener('webkitfullscreenchange', paintFull);
+// F11 is the browser's own; F alone is ours, when you are not typing
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'f' && e.key !== 'F') return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  $('fullBtn').click();
+});
+paintFull();
+
 $('soundBtn').onclick = () => {
   const on = sound.toggle();
   $('soundBtn').classList.toggle('off', !on);

@@ -505,7 +505,7 @@ io.on('connection', (socket) => {
     if (['buy', 'buyAuction', 'auction'].includes(patch.buyMode)) s.buyMode = patch.buyMode;
     if (['timed', 'last', 'firstbust'].includes(patch.endMode)) s.endMode = patch.endMode;
     if ([20, 30, 45, 60, 90, 120].includes(Number(patch.minutes))) s.minutes = Number(patch.minutes);
-    for (const k of ['freeParking', 'doubleGo', 'noJailRent']) {
+    for (const k of ['freeParking', 'doubleGo', 'noJailRent', 'tripleDouble']) {
       if (typeof patch[k] === 'boolean') s[k] = patch[k];
     }
     if ([1000, 1500, 2000, 2500].includes(Number(patch.startCash))) s.startCash = Number(patch.startCash);

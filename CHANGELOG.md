@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.14.0
+
+- **There are only two roads to jail now**: the Go to Jail corner, and a card
+  that says so. Rolling doubles all day leaves you a free citizen. The old rule
+  is still there as a house rule in the table settings if anybody wants it back.
+- **An owner's sash on every square they hold** — a band of their colour pressed
+  right up against the property's own colour bar, with their name on it on the
+  top and bottom rails. You can read the whole board's ownership without
+  looking twice.
+- **The pieces always sit on top.** A piece landing on an owned square no longer
+  disappears behind the sash or the price.
+- **The price is a chip on the shoulder of the name strip** rather than squeezed
+  in beside the name — about two and a half times its old size, and the
+  painting's own title is no longer covered.
+- **Click any player on the right** and the left rail shows their money and their
+  deeds, laid out exactly the way yours are. Everybody can look at everybody.
+- **The right-hand panel is much bigger** — the dice, the names, the money.
+- **The deed card is twice the size with text three times as large**, and you can
+  click it to turn it over and see the painted face with the price on it.
+- **Full screen**, from the button in the corner or by pressing F.
+
 ## 1.13.0
 
 - **The deal table.** Press Offer and the table opens: your belongings on one
