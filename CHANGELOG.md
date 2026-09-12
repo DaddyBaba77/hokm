@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.19.0
+
+- **You can step out of a table without losing it.** A Back arrow in the corner
+  walks you out one screen at a time — game, then lobby, then home — and your
+  seat stays exactly where it was the whole way.
+- **The lobby, mid-game.** Step back from a game and you get your table's lobby:
+  the code, the Copy link button, everyone's seats — with a big **Back to the
+  game** to go straight in. Nothing there can disturb a game in progress.
+- **The home screen remembers.** Step all the way out and it says *You are still
+  at table ABCD* with **Go back in** — one press and you are back where you were,
+  in the lobby or in the middle of the game. **Leave it** is there too, for when
+  you actually mean it.
+- **The browser's own back button walks the same path** instead of throwing you
+  off the page. Press it once too often from the home screen and it leaves, the
+  way it should.
+
 ## 1.18.0
 
 - **Railway rent now opens the payment mat like everything else.** It always

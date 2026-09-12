@@ -6,7 +6,7 @@ const SUIT_NAME = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
 const RED = new Set(['H', 'D']);
 const RANK_LABEL = { T: '10' };
 const RANK_VALUE = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
-const VERSION = '1.18.0';
+const VERSION = '1.19.0';
 const TEAM_NAME = { A: 'Azure', B: 'Crimson' };
 const POINTS_TO_WIN = 7;
 
@@ -174,6 +174,56 @@ function toast(msg) {
 function show(screen) {
   for (const s of ['home', 'lobby', 'table', 'snakes', 'monopoly']) $(s).classList.toggle('hidden', s !== screen);
 }
+
+/* ───────────────────────── stepping back ─────────────────────────
+ *
+ * You never lose your table by looking away from it. The Back button (and the
+ * browser's own) walks out one step at a time — game → lobby → home — and your
+ * seat is still there when you walk back in.
+ */
+
+// null follows the table; 'lobby' is peeking at the lobby mid-game; 'home' has
+// stepped all the way out without leaving the room.
+let view = null;
+
+const inGame = () => !!(S && S.game);
+
+function backLabel() {
+  if (!S || view === 'home') return null;
+  return view === null && inGame() ? 'Back to the lobby' : 'Back to the home screen';
+}
+
+function paintBack() {
+  const b = $('backBtn');
+  if (!b) return;
+  const label = backLabel();
+  b.classList.toggle('hidden', !label);
+  if (label) b.title = label;
+}
+
+/** One step further out: game → lobby → home. False when there is nowhere left. */
+function stepBack() {
+  if (!S || view === 'home') return false;
+  view = view === null && inGame() ? 'lobby' : 'home';
+  render();
+  return true;
+}
+
+function goTo(where) { view = where; render(); }
+
+$('backBtn').onclick = () => stepBack();
+
+// the browser's own back walks the same path rather than leaving the page
+let trapped = false;
+function armBack() {
+  if (trapped) return;
+  trapped = true;
+  history.pushState({ hokm: 1 }, '', location.search);
+}
+window.addEventListener('popstate', () => {
+  trapped = false;
+  if (stepBack()) armBack();
+});
 
 /** Screen position for a seat, relative to where I'm sitting. */
 function posFor(seat, mySeat) {
@@ -405,8 +455,32 @@ $('startBtn').onclick = () => { sound.prime(); socket.emit('start'); };
 $('fillBtn').onclick = () => S.seats.forEach((s, i) => { if (!s) socket.emit('addBot', { seat: i }); });
 $('leaveBtn').onclick = () => { location.href = location.origin; };
 
+/** The home screen, when you have stepped out of a table you are still in. */
+function paintResume() {
+  const card = $('resumeCard');
+  if (!card) return;
+  const here = S && S.code;
+  card.classList.toggle('hidden', !here);
+  if (here) $('resumeCode').textContent = S.code;
+}
+$('resumeBtn').onclick = () => goTo(null);
+$('resumeGameBtn').onclick = () => goTo(null);
+$('resumeQuit').onclick = () => { location.href = location.origin; };
+
 function renderLobby() {
   $('roomCode').textContent = S.code;
+  // peeking at the lobby mid-game: the only thing to do here is go back in
+  const live = !!S.game;
+  $('resumeGameBtn').classList.toggle('hidden', !live);
+  $('startBtn').classList.toggle('hidden', live);
+  $('randomBtn').classList.toggle('hidden', live);
+  $('fillBtn').classList.toggle('hidden', live);
+  if (live) {
+    // renderSettings and renderPieces never run in this state, so hide them here
+    $('tableSettings').classList.add('hidden');
+    $('piecePick').classList.add('hidden');
+    $('lobbyHint').textContent = 'The game is still going — your seat is where you left it.';
+  }
   const teams = S.hasTeams !== false;
   document.querySelector('.seatgrid').classList.toggle('no-teams', !teams);
   $('seatList').classList.toggle('wide', S.seats.length > 4);
@@ -426,7 +500,9 @@ function renderLobby() {
     const row = document.createElement('div');
     row.className = 'row';
 
-    if (!s) {
+    if (live) {
+      // a game is running: this is a look, not a lobby
+    } else if (!s) {
       const b = document.createElement('button');
       b.className = 'btn small';
       b.textContent = S.mySeat === null ? 'Sit here' : 'Move here';
@@ -451,6 +527,7 @@ function renderLobby() {
   const filled = S.seats.filter(Boolean).length;
   const min = S.minPlayers || 4;
   const seats = S.seats.length;
+  if (live) return;
   $('startBtn').disabled = filled < min || !S.isHost;
   $('randomBtn').disabled = !S.isHost || filled < 2;
   $('randomBtn').textContent = teams ? 'Random teams' : 'Shuffle order';
@@ -1294,7 +1371,19 @@ window.addEventListener('resize', () => {
 /* ───────────────────────── render ───────────────────────── */
 
 function render() {
-  if (!S) return show('home');
+  paintBack();
+  if (!S) { paintResume(); return show('home'); }
+  armBack();
+
+  // stepped out to the home screen, but still sitting at the table
+  if (view === 'home') { paintResume(); return show('home'); }
+
+  // looking at the lobby while the game carries on without you
+  if (view === 'lobby' && S.game) {
+    show('lobby');
+    renderLobby();
+    return;
+  }
 
   if (S.game && S.gameType === 'snakes') {
     show('snakes');
@@ -1309,6 +1398,7 @@ function render() {
   }
 
   if (!S.game) {
+    view = null;
     show('lobby');
     renderLobby();
     if (window.Snakes) window.Snakes.reset();

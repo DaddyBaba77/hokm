@@ -72,6 +72,18 @@ body::before {
 .icon:hover { border-color: rgba(230,189,109,.6); }
 .icon.off { opacity: .4; }
 .icon.on { color: var(--gold); border-color: var(--gold); background: rgba(230,189,109,.18); }
+.icon.hidden { display: none; }
+
+/* the table you are still sitting at, waiting on the home screen */
+.resume {
+  margin: 0 0 .9rem; padding: .7rem .8rem; border-radius: 12px;
+  background: rgba(230,189,109,.12); border: 1px solid rgba(230,189,109,.45);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+}
+.resume.hidden { display: none; }
+.resume > span { font-size: .86rem; color: var(--ink); }
+.resume b { color: var(--gold); letter-spacing: .18em; font-size: 1.05rem; }
+.resume-btns { display: flex; gap: 6px; align-items: center; }
 
 input {
   font: inherit; color: var(--ink);

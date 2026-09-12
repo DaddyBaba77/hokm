@@ -22,6 +22,14 @@
       <input id="nameInput" maxlength="18" placeholder="e.g. John" autocomplete="nickname" />
     </label>
 
+    <div id="resumeCard" class="resume hidden">
+      <span>You are still at table <b id="resumeCode">----</b></span>
+      <div class="resume-btns">
+        <button type="button" id="resumeBtn" class="btn primary">Go back in</button>
+        <button type="button" id="resumeQuit" class="btn ghost small">Leave it</button>
+      </div>
+    </div>
+
     <span class="pick-label">Choose a game</span>
     <div class="gamepick" id="gamePick">
       <button type="button" class="gp on" data-game="hokm">
@@ -173,6 +181,7 @@
       <button id="randomBtn" class="btn ghost">Random teams</button>
       <button id="fillBtn" class="btn ghost">Fill with bots</button>
       <button id="startBtn" class="btn primary">Start game</button>
+      <button id="resumeGameBtn" class="btn primary hidden">Back to the game</button>
     </div>
     <p id="lobbyHint" class="hint"></p>
   </div>
@@ -453,6 +462,7 @@
 </div>
 
 <div class="util-btns">
+  <button id="backBtn" class="icon hidden" aria-label="Back" title="Back">&#8592;</button>
   <button id="fullBtn" class="icon" aria-label="Full screen" title="Full screen">&#9974;</button>
   <button id="soundBtn" class="icon" aria-label="Sound">&#9834;</button>
   <button id="logBtn" class="icon" aria-label="Table log">&#9776;</button>
