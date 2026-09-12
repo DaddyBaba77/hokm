@@ -3,7 +3,7 @@
 
 import {
   MonopolyGame, BOARD, GROUP_MEMBERS, GROUPS, RAILS, UTILS, BUYABLE,
-  SPACES, HOUSE_STOCK, HOTEL_STOCK, FORTUNE, TREASURY, RAIL_RENT, TOKEN_COLOURS,
+  SPACES, HOUSE_STOCK, HOTEL_STOCK, FORTUNE, TREASURY, RAIL_RENT, TOKEN_COLOURS, MAX_COUNTERS,
 } from '../src/monopoly.js';
 import { act, judgeOffer } from '../src/monopoly-bot.js';
 
@@ -176,6 +176,93 @@ function audit(g, tag) {
   const on = g.propose(mine, theirs, { cash: 0, props: [1] }, { cash: 0, props: [6] });
   check(!on.error, 'on your own turn the offer goes up');
   check(!!g.offer && g.offer.from === mine, 'and it is yours');
+}
+
+// ─────────────────────────── a round of building, one house on each
+
+{
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(41) });
+  const seat = g.turn;
+  const mem = GROUP_MEMBERS.saffron;          // three streets at 50 a house
+  for (const i of mem) g.owner[i] = seat;
+  g.cash[seat] = 1000;
+  const before = g.housesLeft;
+
+  check(!g.canBuildRound(seat, 'saffron'), 'a whole colour can take a round');
+  const r = g.buildRound(seat, 'saffron');
+  check(!r.error, 'and the round goes up');
+  check(mem.every((i) => g.houses[i] === 1), 'one house on every street of it');
+  check(g.cash[seat] === 1000 - 150, 'paid for all three at once');
+  check(g.housesLeft === before - 3, 'and the bank is three houses lighter');
+
+  // it is all or nothing
+  g.cash[seat] = 100;                          // enough for two, not three
+  const poor = g.buildRound(seat, 'saffron');
+  check(!!poor.error, 'a round you cannot afford is refused');
+  check(mem.every((i) => g.houses[i] === 1), 'and nothing went up');
+  check(g.cash[seat] === 100, 'and nothing was paid');
+}
+{
+  // you need the whole colour
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(42) });
+  const seat = g.turn;
+  const mem = GROUP_MEMBERS.saffron;
+  g.owner[mem[0]] = seat; g.owner[mem[1]] = seat;
+  g.cash[seat] = 1000;
+  check(!!g.canBuildRound(seat, 'saffron'), 'two thirds of a colour cannot take a round');
+}
+{
+  // four rounds fill the colour, the fifth turns it into hotels
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(43) });
+  const seat = g.turn;
+  const mem = GROUP_MEMBERS.saffron;
+  for (const i of mem) g.owner[i] = seat;
+  g.cash[seat] = 5000;
+  for (let k = 0; k < 5; k++) check(!g.buildRound(seat, 'saffron').error, `round ${k + 1} goes up`);
+  check(mem.every((i) => g.houses[i] === 5), 'five rounds leaves a hotel on each');
+  check(!!g.canBuildRound(seat, 'saffron'), 'and there is nothing left to build');
+}
+
+// ─────────────────────────── handing an offer back the other way
+
+{
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(31) });
+  const mine = g.turn, theirs = (g.turn + 1) % 2;
+  g.owner[1] = mine; g.owner[6] = theirs;
+  g.propose(mine, theirs, { cash: 50, props: [1] }, { cash: 0, props: [6] });
+  check(!!g.offer && g.offer.to === theirs, 'the offer is sitting with them');
+
+  // only the player it was put to may hand it back
+  check(!!g.counter(mine, { cash: 0, props: [] }, { cash: 0, props: [] }).error,
+    'you cannot counter your own offer');
+
+  const back = g.counter(theirs, { cash: 0, props: [6] }, { cash: 120, props: [1] });
+  check(!back.error, 'the player it was put to can counter');
+  check(g.offer.from === theirs && g.offer.to === mine, 'and it turns round to face the proposer');
+  check(g.offer.giveProps.join() === '6' && g.offer.wantCash === 120, 'with their own terms on it');
+
+  // and the proposer can take it
+  const cashBefore = g.cash[mine];
+  g.respond(mine, true);
+  check(!g.offer, 'accepting clears the table');
+  check(g.owner[6] === mine && g.owner[1] === theirs, 'both sides changed hands');
+  // the counter asked 120 of the proposer, so it leaves their hand
+  check(g.cash[mine] === cashBefore - 120, 'and the cash went the way the counter said');
+}
+{
+  // the haggling has to stop somewhere
+  const g = new MonopolyGame([{ name: 'A' }, { name: 'B' }], { rng: mulberry(32) });
+  const mine = g.turn, theirs = (g.turn + 1) % 2;
+  g.owner[1] = mine; g.owner[6] = theirs;
+  g.propose(mine, theirs, { cash: 10, props: [1] }, { cash: 0, props: [6] });
+  let seat = theirs;
+  for (let k = 0; k < MAX_COUNTERS; k++) {
+    const r = g.counter(seat, { cash: 0, props: [seat === mine ? 1 : 6] }, { cash: 10 + k, props: [] });
+    check(!r.error, `counter ${k + 1} of ${MAX_COUNTERS} goes through`);
+    seat = seat === mine ? theirs : mine;
+  }
+  check(!!g.counter(seat, { cash: 0, props: [] }, { cash: 5, props: [] }).error,
+    'the next one is refused — somebody has to decide');
 }
 
 // ─────────────────────────── rent maths, checked directly

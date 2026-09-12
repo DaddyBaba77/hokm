@@ -1177,6 +1177,7 @@ input::placeholder { color: #6d80a0; }
 }
 .sq.art { --ob: 0px; }
 .sq.art.owned { --ob: calc(var(--ew) * .2); }
+.s-left.art.owned, .s-right.art.owned { --ob: calc(var(--ew) * .26); }
 .s-bottom.art .pic { top: calc(var(--ew) * .36 + var(--ob)); }
 .s-top.art    .pic { bottom: calc(var(--ew) * .36 + var(--ob)); }
 .s-left.art   .pic { right: calc(var(--ew) * .36 + var(--ob)); }
@@ -1192,7 +1193,7 @@ input::placeholder { color: #6d80a0; }
     rgba(250,244,228,.96) 0%, rgba(250,244,228,.93) 58%, rgba(250,244,228,0) 100%);
 }
 .s-bottom.art .cap, .s-top.art .cap, .sq.art.noband .cap { left: 0; right: 0; }
-.s-top.art    .cap { bottom: calc(var(--ew) * .36); }
+.s-top.art    .cap { bottom: calc(var(--ew) * .36 + var(--ob)); }
 .s-left.art   .cap { left: 0; right: calc(var(--ew) * .36); }
 .s-right.art  .cap { right: 0; left: calc(var(--ew) * .36); }
 .s-top.art.noband .cap, .s-left.art.noband .cap, .s-right.art.noband .cap {
@@ -1225,6 +1226,8 @@ input::placeholder { color: #6d80a0; }
   text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 6px rgba(0,0,0,.7);
   transition: background .16s, color .16s, box-shadow .16s;
 }
+/* on the left rail the sash is between the strip and the band, so step past it */
+.s-left.art.owned .cap .pr { right: calc(var(--ob) + 4px); }
 .sq.art:hover .cap .pr {
   color: #ffeccb; background: rgba(6,14,30,.88);
   box-shadow: 0 0 0 1px rgba(230,189,109,.6), 0 1px 4px rgba(0,0,0,.6);
@@ -1279,9 +1282,15 @@ input::placeholder { color: #6d80a0; }
 .sq.owned .ownband { display: flex; }
 .s-bottom.art .ownband { top: calc(var(--ew) * .36); left: 0; right: 0; height: var(--ob); }
 .s-top.art    .ownband { bottom: calc(var(--ew) * .36); left: 0; right: 0; height: var(--ob); }
-/* on the side rails the sash runs the depth of the square, so it carries no text */
-.s-left.art   .ownband { right: calc(var(--ew) * .36); top: 0; bottom: 0; width: var(--ob); font-size: 0; }
-.s-right.art  .ownband { left: calc(var(--ew) * .36); top: 0; bottom: 0; width: var(--ob); font-size: 0; }
+/* the side rails hold the sash on its side, so the name still reads */
+.s-left.art .ownband, .s-right.art .ownband {
+  /* it stops short of the name strip, so a long name is never cut in half */
+  top: 0; bottom: calc(var(--ew) * .38); width: var(--ob);
+  writing-mode: vertical-rl;
+  font-size: clamp(4px, calc(var(--ew) * .125), 12px);
+}
+.s-left.art  .ownband { right: calc(var(--ew) * .36); transform: rotate(180deg); }
+.s-right.art .ownband { left: calc(var(--ew) * .36); }
 /* the squares with no colour band of their own put the sash on the outer edge */
 .s-bottom.art.noband .ownband { top: 0; }
 .s-top.art.noband    .ownband { bottom: 0; }
@@ -1320,7 +1329,7 @@ input::placeholder { color: #6d80a0; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* the tall squares are too narrow for a name beside the piece */
-.s-bottom .ownmark, .s-top .ownmark { display: none; }
+.ownmark { display: none; }
 .s-bottom .ownmark, .s-top .ownmark { padding-right: 1px; }
 /* an owned square's name strip picks up a wash of their colour */
 .sq.art.owned .cap {
@@ -2222,6 +2231,19 @@ input::placeholder { color: #6d80a0; }
 }
 .hd-group.full { border-color: var(--c); box-shadow: 0 0 14px color-mix(in srgb, var(--c) 35%, transparent); }
 .hd-cards { display: flex; flex-wrap: wrap; align-content: flex-start; align-self: stretch; }
+/* one press puts a house on every street of the colour */
+.hd-build {
+  align-self: stretch; margin: 0 0 5px; padding: .28rem .4rem; cursor: pointer;
+  font-family: inherit; font-size: clamp(.52rem, calc(var(--hw) * .038), .88rem);
+  font-weight: 800; letter-spacing: .04em; color: #04210f;
+  background: linear-gradient(180deg, #7ef0a0, #2f9f5c);
+  border: 1px solid rgba(10,60,30,.5); border-radius: 8px;
+}
+.hd-build:hover { filter: brightness(1.1); }
+.hd-build.off {
+  background: rgba(255,255,255,.06); color: var(--muted);
+  border-color: rgba(255,255,255,.12); cursor: not-allowed;
+}
 .hd-gname {
   align-self: stretch; display: flex; gap: 6px; align-items: baseline;
   font-family: inherit; background: none; border: 0; padding: 0 0 4px; cursor: pointer;

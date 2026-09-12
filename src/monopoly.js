@@ -3,7 +3,7 @@
 //
 // The mechanics are the classic ones — 40 spaces, eight colour groups, even
 // building, doubled rent on an unimproved monopoly, railroad tiers, utility
-// multipliers, auctions, mortgages, jail on three doubles — but every name,
+// multipliers, auctions, mortgages — but every name,
 // card and piece of art in here is our own.
 
 export const MIN_PLAYERS = 2;
@@ -15,6 +15,8 @@ export const START_CASH = 1500;
 export const HOUSE_STOCK = 32;
 export const HOTEL_STOCK = 12;
 export const JAIL_FINE = 50;
+/** How many times an offer may be handed back before somebody has to decide. */
+export const MAX_COUNTERS = 4;
 
 // No blue: the table and the board are blue, so a blue player disappears into
 // them. These eight all carry against dark navy and against the paintings.
@@ -220,6 +222,7 @@ export class MonopolyGame {
     this.debt = null;
     this.offer = null;                           // one open trade at a time
     this.offersThisTurn = 0;
+    this.counters = 0;
     this.pot = 0;                                // the tea house jackpot
     this.dice = null;
     this.lastCard = null;
@@ -232,6 +235,7 @@ export class MonopolyGame {
       ? this.startedAt + this.settings.minutes * 60000
       : null;
     this.log = [];
+    this.moneyLog = [];
     this.note(`${players[0].name} opens the bazaar.`);
   }
 
@@ -310,7 +314,18 @@ export class MonopolyGame {
    * haven't got it, the game stops and asks them to raise it; `after` says what
    * should happen once the debt is settled.
    */
-  charge(seat, amount, to = null, why = '', after = null) {
+  /**
+   * Every movement of money, in the order it happened, so the table can play
+   * them back one at a time. Two things in one turn — a GO salary and rent —
+   * must not cancel each other out into nothing on screen.
+   */
+  _ledger(from, to, amount, kind) {
+    if (!amount || amount <= 0) return;
+    this.moneyLog.push({ at: ++this.moveId, from, to, amount, kind });
+    if (this.moneyLog.length > 24) this.moneyLog.shift();
+  }
+
+  charge(seat, amount, to = null, why = '', after = null, kind = 'bank') {
     if (amount <= 0) return { ok: true };
     if (this.cash[seat] >= amount) {
       this.cash[seat] -= amount;
@@ -319,16 +334,19 @@ export class MonopolyGame {
       } else {
         this.cash[to] += amount;
       }
+      this._ledger(seat, to, amount, kind);
       return { ok: true };
     }
-    this.debt = { seat, amount, to, why, after: after || { kind: 'action', meta: {} } };
+    this.debt = { seat, amount, to, why, kind, after: after || { kind: 'action', meta: {} } };
     this.phase = 'debt';
     this.note(`${this.name(seat)} owes ${amount} and must raise it.`);
     return { ok: false, debt: true };
   }
 
-  collect(seat, amount) {
+  collect(seat, amount, kind = 'bank') {
+    if (amount <= 0) return;
     this.cash[seat] += amount;
+    this._ledger(null, seat, amount, kind);
   }
 
   // ─────────────────────────── the turn
@@ -375,7 +393,7 @@ export class MonopolyGame {
     this.jailTurns[seat] += 1;
     if (this.jailTurns[seat] >= 3) {
       this.note(`${who} serves the third turn, pays the ${JAIL_FINE} fine and leaves.`);
-      const res = this.charge(seat, JAIL_FINE, null, 'jail fine', { kind: 'jailMove', seat, steps: d1 + d2 });
+      const res = this.charge(seat, JAIL_FINE, null, 'jail fine', { kind: 'jailMove', seat, steps: d1 + d2 }, 'fine');
       this.jailed[seat] = false;
       this.jailTurns[seat] = 0;
       if (!res.ok) return { ok: true };
@@ -390,7 +408,7 @@ export class MonopolyGame {
   payFine(seat) {
     if (seat !== this.turn || !this.jailed[seat]) return { error: 'You are not in jail.' };
     if (this.phase !== 'roll') return { error: 'Not the moment.' };
-    const res = this.charge(seat, JAIL_FINE, null, 'jail fine', { kind: 'roll' });
+    const res = this.charge(seat, JAIL_FINE, null, 'jail fine', { kind: 'roll' }, 'fine');
     if (!res.ok) return { ok: true };
     this.jailed[seat] = false;
     this.jailTurns[seat] = 0;
@@ -444,7 +462,7 @@ export class MonopolyGame {
   _passGo(seat, landedOn) {
     const exact = landedOn === 0 && this.settings.doubleGo;
     const amount = exact ? GO_SALARY * 2 : GO_SALARY;
-    this.collect(seat, amount);
+    this.collect(seat, amount, 'salary');
     this.note(`${this.name(seat)} passes GO and collects ${amount}.`);
   }
 
@@ -463,7 +481,7 @@ export class MonopolyGame {
 
       case 'parking':
         if (this.settings.freeParking && this.pot > 0) {
-          this.collect(seat, this.pot);
+          this.collect(seat, this.pot, 'pot');
           this.note(`${who} takes the ${this.pot} left on the tea house table.`);
           this.pot = 0;
         } else {
@@ -479,7 +497,7 @@ export class MonopolyGame {
 
       case 'tax': {
         this.note(`${who} pays the ${s.name.toLowerCase()} of ${s.tax}.`);
-        const res = this.charge(seat, s.tax, null, s.name, { kind: 'action', meta });
+        const res = this.charge(seat, s.tax, null, s.name, { kind: 'action', meta }, 'tax');
         if (!res.ok) return { ok: true };
         break;
       }
@@ -498,7 +516,7 @@ export class MonopolyGame {
         const rent = this.rentAt(pos, diceTotal, meta.multiply || null);
         if (rent === 0) { this.note(`${who} owes nothing on ${s.name}.`); break; }
         this.note(`${who} pays ${this.name(own)} ${rent} for ${s.name}.`);
-        const res = this.charge(seat, rent, own, `rent on ${s.name}`, { kind: 'action', meta });
+        const res = this.charge(seat, rent, own, `rent on ${s.name}`, { kind: 'action', meta }, 'rent');
         if (!res.ok) return { ok: true };
         break;
       }
@@ -684,9 +702,9 @@ export class MonopolyGame {
         break;
 
       case 'cash': {
-        if (a.amount >= 0) this.collect(seat, a.amount);
+        if (a.amount >= 0) this.collect(seat, a.amount, 'card');
         else {
-          const res = this.charge(seat, -a.amount, null, 'a card', { kind: 'action', meta });
+          const res = this.charge(seat, -a.amount, null, 'a card', { kind: 'action', meta }, 'card');
           if (!res.ok) return { ok: true };
         }
         break;
@@ -701,16 +719,17 @@ export class MonopolyGame {
             const take = Math.min(this.cash[o], a.amount);
             this.cash[o] -= take;
             this.cash[seat] += a.amount;
+            this._ledger(o, seat, a.amount, 'card');
           }
         } else {
           const each = -a.amount;
           const total = each * others.length;
           if (this.cash[seat] < total) {
-            const res = this.charge(seat, total, null, 'a card', { kind: 'payEach', seat, each, others, meta });
+            const res = this.charge(seat, total, null, 'a card', { kind: 'payEach', seat, each, others, meta }, 'card');
             return { ok: true };
           }
           this.cash[seat] -= total;
-          for (const o of others) this.cash[o] += each;
+          for (const o of others) { this.cash[o] += each; this._ledger(seat, o, each, 'card'); }
         }
         break;
       }
@@ -723,7 +742,7 @@ export class MonopolyGame {
         }
         if (owed > 0) {
           this.note(`${this.name(seat)} owes ${owed} in repairs.`);
-          const res = this.charge(seat, owed, null, 'repairs', { kind: 'action', meta });
+          const res = this.charge(seat, owed, null, 'repairs', { kind: 'action', meta }, 'card');
           if (!res.ok) return { ok: true };
         }
         break;
@@ -769,6 +788,57 @@ export class MonopolyGame {
       this.housesLeft -= 1;
       this.note(`${this.name(seat)} builds on ${s.name}.`);
     }
+    return { ok: true };
+  }
+
+  /**
+   * Why a whole round of building cannot go up on `group` — one house on every
+   * street in it, which is how you actually build in a real game.
+   */
+  canBuildRound(seat, group) {
+    const mem = GROUP_MEMBERS[group];
+    if (!mem) return 'No such colour group.';
+    if (!this.ownsGroup(seat, group)) return 'You need the whole colour group first.';
+    if (mem.some((i) => this.mortgaged[i])) return 'Lift the mortgage on the group first.';
+    if (mem.every((i) => this.houses[i] >= 5)) return 'Every street already has a hotel.';
+    if (mem.some((i) => this.houses[i] >= 5)) return 'Finish the group one at a time from here.';
+    const cost = mem.reduce((n, i) => n + BOARD[i].build, 0);
+    if (this.cash[seat] < cost) return `A round costs ${cost} — not enough cash.`;
+    // count what the bank has to find: a street at four takes a hotel, the rest houses
+    const hotels = mem.filter((i) => this.houses[i] === 4).length;
+    const houses = mem.length - hotels;
+    if (this.hotelsLeft < hotels) return 'The bank has no hotels left.';
+    if (this.housesLeft + hotels * 4 < houses) return 'The bank has no houses left.';
+    return null;
+  }
+
+  /**
+   * Put one house on every street of a colour, lowest first so the group is
+   * never uneven along the way. All or nothing: if any of it fails, none of it
+   * happened.
+   */
+  buildRound(seat, group) {
+    const why = this.canBuildRound(seat, group);
+    if (why) return { error: why };
+    const mem = GROUP_MEMBERS[group].slice().sort((a, b) => this.houses[a] - this.houses[b]);
+    const before = {
+      cash: this.cash[seat], houses: this.houses.slice(),
+      housesLeft: this.housesLeft, hotelsLeft: this.hotelsLeft, log: this.log.length,
+    };
+    for (const i of mem) {
+      const r = this.build(seat, i);
+      if (r.error) {
+        this.cash[seat] = before.cash;
+        this.houses = before.houses;
+        this.housesLeft = before.housesLeft;
+        this.hotelsLeft = before.hotelsLeft;
+        this.log.length = before.log;
+        return { error: r.error };
+      }
+    }
+    this.log.length = before.log;
+    const name = GROUPS[group] ? GROUPS[group].name : group;
+    this.note(`${this.name(seat)} builds a round across ${name}.`);
     return { ok: true };
   }
 
@@ -845,6 +915,7 @@ export class MonopolyGame {
     } else {
       this.cash[d.to] += d.amount;
     }
+    this._ledger(d.seat, d.to, d.amount, d.kind || 'bank');
     this.note(`${this.name(d.seat)} settles ${d.amount}.`);
     this.debt = null;
     this.phase = 'roll';
@@ -859,7 +930,11 @@ export class MonopolyGame {
       case 'payEach': {
         // charge() handed it to the bank; it was meant for the other players
         if (this.settings.freeParking) this.pot -= d.amount;
-        for (const o of after.others) if (!this.bust[o]) this.cash[o] += after.each;
+        for (const o of after.others) {
+          if (this.bust[o]) continue;
+          this.cash[o] += after.each;
+          this._ledger(null, o, after.each, 'card');
+        }
         this._afterAction(after.meta || {});
         return;
       }
@@ -923,14 +998,15 @@ export class MonopolyGame {
 
   // ─────────────────────────── trades
 
-  propose(from, to, give, want) {
+  /**
+   * Everything an offer has to survive before it reaches the table: the things
+   * on each side are really theirs, the cash is really there, and nothing is
+   * being sold out from under a house. Shared by an offer and a counter.
+   */
+  _weighOffer(from, to, give, want) {
     if (this.phase === 'over') return { error: 'The game is over.' };
-    // Deals are struck on your own turn, the way they are at a real table —
-    // otherwise offers arrive over the top of whatever somebody else is doing.
-    if (from !== this.turn) return { error: 'You can only deal on your own turn.' };
     if (from === to) return { error: 'You cannot trade with yourself.' };
     if (this.bust[from] || this.bust[to]) return { error: 'That player is out.' };
-    if (this.offer) return { error: 'There is already an offer on the table.' };
     const clean = (list, owner) => (list || []).map(Number).filter(
       (i) => BOARD[i] && BOARD[i].price && this.owner[i] === owner
     );
@@ -945,10 +1021,40 @@ export class MonopolyGame {
       (i) => BOARD[i].type === 'street' && GROUP_MEMBERS[BOARD[i].group].some((j) => this.houses[j] > 0)
     );
     if (built !== undefined) return { error: 'Sell the buildings on that group before trading it.' };
+    return { giveProps, wantProps, giveCash, wantCash };
+  }
+
+  propose(from, to, give, want) {
+    // Deals are struck on your own turn, the way they are at a real table —
+    // otherwise offers arrive over the top of whatever somebody else is doing.
+    if (from !== this.turn) return { error: 'You can only deal on your own turn.' };
+    if (this.offer) return { error: 'There is already an offer on the table.' };
+    const w = this._weighOffer(from, to, give, want);
+    if (w.error) return w;
 
     this.offersThisTurn += 1;
-    this.offer = { from, to, giveProps, wantProps, giveCash, wantCash, at: ++this.moveId };
+    this.counters = 0;
+    this.offer = { from, to, ...w, at: ++this.moveId };
     this.note(`${this.name(from)} puts an offer to ${this.name(to)}.`);
+    return { ok: true };
+  }
+
+  /**
+   * Hand the offer back the other way with your own terms on it. Only the
+   * player it was put to may counter, and only so many times before somebody
+   * has to say yes or no.
+   */
+  counter(seat, give, want) {
+    const o = this.offer;
+    if (!o) return { error: 'No offer on the table.' };
+    if (o.to !== seat) return { error: 'That offer is not yours to answer.' };
+    if (this.counters >= MAX_COUNTERS) return { error: 'Enough haggling — take it or leave it.' };
+    const w = this._weighOffer(seat, o.from, give, want);
+    if (w.error) return w;
+
+    this.counters += 1;
+    this.offer = { from: seat, to: o.from, ...w, at: ++this.moveId, counters: this.counters };
+    this.note(`${this.name(seat)} counters ${this.name(o.from)}.`);
     return { ok: true };
   }
 
@@ -1003,6 +1109,7 @@ export class MonopolyGame {
     this.doubles = 0;
     this.dice = null;
     this.offersThisTurn = 0;
+    this.counters = 0;
     if (this._checkEnd(false)) return;
     const seats = this.aliveSeats();
     if (seats.length === 0) { this.phase = 'over'; return; }
@@ -1081,6 +1188,7 @@ export class MonopolyGame {
       housesLeft: this.housesLeft,
       hotelsLeft: this.hotelsLeft,
       endsAt: this.endsAt,
+      money: this.moneyLog.slice(-12),
       turnDeadline: this.turnDeadline || null,
       turnTotal: this.turnTotal || null,
       owner: this.owner,

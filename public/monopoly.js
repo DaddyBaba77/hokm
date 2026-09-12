@@ -654,32 +654,67 @@ window.Bazaar = (function () {
    * anything else is business with the bank.
    */
   let prevCash = null;
+  /**
+   * Play back every movement of money the server reported, in order, and then
+   * whatever the totals still say is missing.
+   *
+   * The board used to work this out by diffing everyone's cash, which quietly
+   * lost anything that cancelled out — pass GO, collect 200, then pay 200 for a
+   * railway and nothing appeared to happen at all. The server now keeps a
+   * ledger, so each payment is its own moment on the table.
+   */
+  let seenMoney = 0;
   function playMoneyMoves() {
     if (!S || !S.players) return;
+    const n = S.players.length;
     const now = S.players.map((p) => p.cash);
-    if (!prevCash || prevCash.length !== now.length) { prevCash = now; return; }
+    if (!prevCash || prevCash.length !== n) {
+      prevCash = now;
+      seenMoney = (S.money || []).reduce((m, x) => Math.max(m, x.at), 0);
+      return;
+    }
     const deltas = now.map((c, i) => c - prevCash[i]);
     prevCash = now;
-    if (!deltas.some((d) => d !== 0)) return;
 
-    const down = deltas.map((d, i) => ({ d, i })).filter((x) => x.d < 0);
-    const up = deltas.map((d, i) => ({ d, i })).filter((x) => x.d > 0);
+    const fresh = (S.money || []).filter((m) => m.at > seenMoney);
+    for (const m of fresh) seenMoney = Math.max(seenMoney, m.at);
 
-    // Money you did not choose to spend — rent to another player, or a tax
-    // square — you hand over yourself. Anything you pressed a priced button for
-    // (buying, building, lifting a mortgage) just flies, as it always did.
+    // whatever the ledger did not account for — a purchase, a build, a trade —
+    // still gets the old flying notes, worked out from the totals
+    const rest = deltas.slice();
+    for (const m of fresh) {
+      if (m.from !== null && m.from !== undefined) rest[m.from] += m.amount;
+      if (m.to !== null && m.to !== undefined) rest[m.to] -= m.amount;
+    }
+
     const me = S.seat;
-    if (me !== null && me !== undefined && deltas[me] < 0) {
-      const owed = -deltas[me];
-      const toSeat = up.length === 1 && up[0].d === owed ? up[0].i : null;
-      const here = META.board[S.players[me].pos];
-      if (toSeat !== null || (here && here.tax)) {
-        const flights = () => { runMoney(down, up); };
-        enqueue((fin) => askToPay(owed, toSeat, () => { flights(); fin(); }));
-        return;
+    // money you did not choose to part with, you hand over yourself
+    const handsOn = new Set(['rent', 'tax', 'fine']);
+    for (const m of fresh) {
+      const mine = me !== null && me !== undefined && m.from === me;
+      if (mine && handsOn.has(m.kind)) {
+        const to = m.to === null || m.to === undefined ? null : m.to;
+        enqueue((fin) => askToPay(m.amount, to, () => { flyLedger(m); fin(); }));
+      } else {
+        enqueue((fin) => { flyLedger(m); setTimeout(fin, 120); });
       }
     }
-    runMoney(down, up);
+
+    if (rest.some((d) => d !== 0)) {
+      const down = rest.map((d, i) => ({ d, i })).filter((x) => x.d < 0);
+      const up = rest.map((d, i) => ({ d, i })).filter((x) => x.d > 0);
+      if (fresh.length) enqueue((fin) => { runMoney(down, up); setTimeout(fin, 120); });
+      else runMoney(down, up);
+    }
+  }
+
+  /** One line of the ledger, as notes crossing the table. */
+  function flyLedger(m) {
+    const from = m.from === null || m.from === undefined ? bankAnchor() : anchorFor(m.from);
+    const to = m.to === null || m.to === undefined ? bankAnchor() : anchorFor(m.to);
+    flyMoney(from, to, m.amount);
+    if (m.from !== null && m.from !== undefined) cashPop(from, -m.amount, false);
+    if (m.to !== null && m.to !== undefined) cashPop(to, m.amount, true);
   }
 
   function runMoney(down, up) {
@@ -839,7 +874,10 @@ window.Bazaar = (function () {
     hand.innerHTML = '';
     drop.querySelectorAll('.bundle').forEach((n) => n.remove());
     drop.classList.remove('full');
-    go.disabled = true;
+    // Pay always works — drag the notes across for the feel of it, or just press
+    // the button and it hands them over for you.
+    go.disabled = false;
+    go.classList.remove('ready');
     mat.classList.remove('hidden');
     void mat.offsetWidth;
     mat.classList.add('in');
@@ -1722,8 +1760,12 @@ window.Bazaar = (function () {
   let lastDeedKey = null;
   function paintDeeds() {
     const me = handSeat();
+    // cash and the bank's stock decide whether a round can go up, so they are
+    // part of what makes this view stale
     const key = me === null || me === undefined ? 'none'
-      : me + '|' + S.players[me].owns.join(',') + '|' + S.houses.join('') + '|' + S.mortgaged.map((m) => (m ? 1 : 0)).join('');
+      : [me, S.players[me].owns.join(','), S.houses.join(''),
+         S.mortgaged.map((m) => (m ? 1 : 0)).join(''),
+         S.players[me].cash, S.housesLeft, S.hotelsLeft, S.phase].join('|');
     if (key === lastDeedKey) return;
     lastDeedKey = key;
     const box = $('mDeeds');
@@ -1763,6 +1805,23 @@ window.Bazaar = (function () {
       head.appendChild(el('i', '', `${list.length}/${whole}`));
       head.addEventListener('click', () => wrap.classList.toggle('open'));
       wrap.appendChild(head);
+
+      // a complete colour in your own hand can take a round of building in one press
+      if (g && list.length === whole && me === S.seat && S.phase !== 'over') {
+        const mem = membersOf(gkey);
+        const cost = mem.reduce((n, x) => n + META.board[x].build, 0);
+        const why = roundWhy(gkey);
+        // nothing left to build is not a button, it is just done
+        if (why !== 'Every street already has a hotel.') {
+          const b = el('button', 'hd-build' + (why ? ' off' : ''),
+            `\u2302 \u00d7${mem.length} \u2014 ${money(cost)}`);
+          b.type = 'button';
+          b.title = why || `One house on each of the ${mem.length} — ${money(cost)}`;
+          if (why) b.disabled = true;
+          else b.addEventListener('click', (e) => { e.stopPropagation(); send({ type: 'buildRound', group: gkey }); });
+          wrap.appendChild(b);
+        }
+      }
 
       const cards = el('div', 'hd-cards');
       list.sort((a, b) => a - b).forEach((i, n) => {
@@ -1896,6 +1955,13 @@ window.Bazaar = (function () {
       if (sp.type === 'street') {
         const h = S.houses[i];
         if (h < 5) can(h === 4 ? `Raise a hotel (${money(sp.build)})` : `Build a house (${money(sp.build)})`, 'primary', () => send({ type: 'build', pos: i }), buildWhy(i));
+        // one on every street of the colour at once — how you actually build
+        const mem = membersOf(sp.group);
+        if (mem.length > 1 && mem.every((x) => S.houses[x] < 5)) {
+          const cost = mem.reduce((n, x) => n + META.board[x].build, 0);
+          can(`Build a round \u2014 ${mem.length} houses (${money(cost)})`, 'primary',
+            () => send({ type: 'buildRound', group: sp.group }), roundWhy(sp.group));
+        }
         if (h > 0) can(`Sell one back (${money(Math.floor(sp.build / 2))})`, 'ghost', () => send({ type: 'sell', pos: i }), sellWhy(i));
       }
       if (S.mortgaged[i]) can(`Lift the mortgage (${money(Math.round(sp.mortgage * 1.1))})`, 'ghost', () => send({ type: 'unmortgage', pos: i }), S.players[me].cash < Math.round(sp.mortgage * 1.1) ? 'Not enough cash.' : null);
@@ -1907,6 +1973,24 @@ window.Bazaar = (function () {
   // mirrors of the engine's guards, so a button can say why it is greyed out
   function groupOf(i) { return META.board[i].group; }
   function membersOf(g) { return META.board.filter((s) => s.group === g).map((s) => s.i); }
+
+  /** Why a whole round cannot go up — the engine's rule, said out loud. */
+  function roundWhy(group) {
+    const me = S.seat;
+    if (me === null || me === undefined) return 'You are watching this one.';
+    const mem = membersOf(group);
+    if (!mem.every((i) => S.owner[i] === me)) return 'You need the whole colour group first.';
+    if (mem.some((i) => S.mortgaged[i])) return 'Lift the mortgage on the group first.';
+    if (mem.every((i) => S.houses[i] >= 5)) return 'Every street already has a hotel.';
+    if (mem.some((i) => S.houses[i] >= 5)) return 'Finish the group one at a time from here.';
+    const cost = mem.reduce((n, i) => n + META.board[i].build, 0);
+    if (S.players[me].cash < cost) return `A round costs ${money(cost)} — not enough cash.`;
+    const hotels = mem.filter((i) => S.houses[i] === 4).length;
+    const houses = mem.length - hotels;
+    if (S.hotelsLeft < hotels) return 'The bank has no hotels left.';
+    if (S.housesLeft + hotels * 4 < houses) return 'The bank has no houses left.';
+    return null;
+  }
   function buildWhy(i) {
     const sp = META.board[i], me = S.seat;
     const mem = membersOf(sp.group);
@@ -1939,15 +2023,38 @@ window.Bazaar = (function () {
   // Drag a deed or a bundle of notes down into your lane to offer it, or into
   // theirs to ask for it. Nothing is sent until you press the button.
 
-  let deal = null;   // { give: {cash, props:Set}, want: {cash, props:Set} }
+  let deal = null;      // { give: {cash, props:Set}, want: {cash, props:Set} }
+  let dealMode = 'propose';
+
+  const blankDeal = () => ({ give: { cash: 0, props: new Set() }, want: { cash: 0, props: new Set() } });
 
   function openTrade(seat) {
     tradeWith = seat;
-    deal = { give: { cash: 0, props: new Set() }, want: { cash: 0, props: new Set() } };
+    dealMode = 'propose';
+    deal = blankDeal();
     paintTrade();
     $('mTrade').classList.remove('hidden');
   }
-  function closeTrade() { tradeWith = null; deal = null; $('mTrade').classList.add('hidden'); }
+
+  /**
+   * Hand an offer back the other way. The table opens with their terms already
+   * laid out, turned round — what they asked of you is what you would give —
+   * so you only have to change the part you do not like.
+   */
+  function openCounter() {
+    const o = S.offer;
+    if (!o || o.to !== S.seat) return;
+    tradeWith = o.from;
+    dealMode = 'counter';
+    deal = blankDeal();
+    deal.give.cash = o.wantCash;
+    for (const i of o.wantProps) deal.give.props.add(i);
+    deal.want.cash = o.giveCash;
+    for (const i of o.giveProps) deal.want.props.add(i);
+    paintTrade();
+    $('mTrade').classList.remove('hidden');
+  }
+  function closeTrade() { tradeWith = null; deal = null; dealMode = 'propose'; $('mTrade').classList.add('hidden'); }
 
   /** The stack of notes you hold, one draggable chip per denomination. */
   function dealNotes(box, seat, lane) {
@@ -2071,7 +2178,10 @@ window.Bazaar = (function () {
   function paintTrade() {
     if (tradeWith === null || !S || S.seat === null || !deal) return;
     const me = S.seat, them = tradeWith;
-    $('mTradeTitle').textContent = `Dealing with ${S.players[them].name}`;
+    $('mTradeTitle').textContent = dealMode === 'counter'
+      ? `Countering ${S.players[them].name}`
+      : `Dealing with ${S.players[them].name}`;
+    $('mDealSend').textContent = dealMode === 'counter' ? 'Send it back' : 'Send the offer';
     $('mDealMineName').textContent = `${S.players[me].name} — you`;
     $('mDealMineCash').textContent = money(S.players[me].cash);
     $('mDealThemName').textContent = S.players[them].name;
@@ -2090,11 +2200,10 @@ window.Bazaar = (function () {
     });
     $('mDealSend').addEventListener('click', () => {
       if (tradeWith === null || !deal) return;
-      send({
-        type: 'propose', to: tradeWith,
-        give: { cash: deal.give.cash, props: [...deal.give.props] },
-        want: { cash: deal.want.cash, props: [...deal.want.props] },
-      });
+      const give = { cash: deal.give.cash, props: [...deal.give.props] };
+      const want = { cash: deal.want.cash, props: [...deal.want.props] };
+      if (dealMode === 'counter') send({ type: 'counter', give, want });
+      else send({ type: 'propose', to: tradeWith, give, want });
       closeTrade();
     });
   }
@@ -2176,9 +2285,15 @@ window.Bazaar = (function () {
     if (o.to === S.seat) {
       const yes = el('button', 'btn primary', 'Accept');
       yes.addEventListener('click', () => send({ type: 'respond', accept: true }));
+      row.appendChild(yes);
+      if ((o.counters || 0) < 4) {
+        const back = el('button', 'btn', 'Counter');
+        back.addEventListener('click', openCounter);
+        row.appendChild(back);
+      }
       const no = el('button', 'btn ghost', 'Decline');
       no.addEventListener('click', () => send({ type: 'respond', accept: false }));
-      row.appendChild(yes); row.appendChild(no);
+      row.appendChild(no);
     } else if (o.from === S.seat) {
       const w = el('button', 'btn ghost', 'Withdraw');
       w.addEventListener('click', () => send({ type: 'withdraw' }));
@@ -2273,7 +2388,7 @@ window.Bazaar = (function () {
 
   function reset() {
     built = false; cells = []; tokens = []; shown = []; centres = [];
-    queue = []; running = false; seenMove = 0; seenCard = 0; seenOffer = 0;
+    queue = []; running = false; seenMove = 0; seenCard = 0; seenOffer = 0; seenMoney = 0;
     zoom = 1; panX = 0; panY = 0; viewSet = false; prevCash = null;
     const fx = $('moneyFx');
     if (fx) fx.innerHTML = '';

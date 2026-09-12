@@ -161,7 +161,7 @@ const MONO_OFFER_MS = 60000;
 // time to see whose turn it is, watch the piece walk and read what happened.
 const MONO_PAUSE = {
   roll: 2600, buy: 2400, auction: 1800, debt: 1400, end_turn: 2000,
-  build: 1300, sell: 1200, mortgage: 1200, unmortgage: 1200, bankrupt: 2200,
+  build: 1300, buildRound: 1600, sell: 1200, mortgage: 1200, unmortgage: 1200, bankrupt: 2200,
 };
 
 /** Apply one bot/timeout decision. Returns false if there was nothing to do. */
@@ -176,12 +176,14 @@ function applyMonoAction(g, seat, a) {
     case 'bid':        g.bid(seat, a.amount); return true;
     case 'passBid':    g.passBid(seat); return true;
     case 'build':      g.build(seat, a.pos); return true;
+    case 'buildRound': g.buildRound(seat, a.group); return true;
     case 'sell':       g.sell(seat, a.pos); return true;
     case 'mortgage':   g.mortgage(seat, a.pos); return true;
     case 'unmortgage': g.unmortgage(seat, a.pos); return true;
     case 'bankrupt':   g.declareBankrupt(seat); return true;
     case 'endTurn':    g.endTurn(seat); return true;
     case 'propose':    g.propose(seat, a.to, a.give, a.want); return true;
+    case 'counter':    g.counter(seat, a.give, a.want); return true;
     default:           return false;
   }
 }
@@ -540,12 +542,14 @@ io.on('connection', (socket) => {
       case 'bid':        res = g.bid(seat, a.amount); break;
       case 'passBid':    res = g.passBid(seat); break;
       case 'build':      res = g.build(seat, a.pos); break;
+      case 'buildRound': res = g.buildRound(seat, a.group); break;
       case 'sell':       res = g.sell(seat, a.pos); break;
       case 'mortgage':   res = g.mortgage(seat, a.pos); break;
       case 'unmortgage': res = g.unmortgage(seat, a.pos); break;
       case 'bankrupt':   res = g.declareBankrupt(seat); break;
       case 'endTurn':    res = g.endTurn(seat); break;
       case 'propose':    res = g.propose(seat, a.to, a.give || {}, a.want || {}); break;
+      case 'counter':    res = g.counter(seat, a.give || {}, a.want || {}); break;
       case 'respond':    res = g.respond(seat, !!a.accept); break;
       case 'withdraw':   res = g.withdraw(seat); break;
       default: return;

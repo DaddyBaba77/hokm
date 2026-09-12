@@ -1,5 +1,56 @@
 # Changelog
 
+## 1.18.0
+
+- **Railway rent now opens the payment mat like everything else.** It always
+  should have: the board worked out who paid what by comparing everyone's cash
+  before and after, so two things in one move could cancel each other out and
+  vanish. Pass GO for ◈200 and land on a ◈200 railway and the totals had not
+  moved, so nothing appeared to happen at all.
+- The server now keeps a **ledger of every payment** — rent, tax, fines, the GO
+  salary, what a card gives or takes — and the table plays them back one at a
+  time, in the order they happened. You see the salary arrive, then you hand over
+  the rent, even though the two are the same number.
+- **Pay always works.** You can still drag your notes across for the feel of it,
+  but pressing Pay now hands them over for you rather than waiting.
+- Money you chose to spend — buying, building, lifting a mortgage, settling a
+  trade — still just flies, as before.
+
+## 1.17.0
+
+- **Build a round in one press.** A complete colour in your hand carries a green
+  **⌂ ×3 — ◈150** button: one house on every street of the set at once, which is
+  how you actually build. Two-street colours show ×2, and the deed card offers
+  the same thing beside the single house.
+- It goes up lowest street first, so the group is never uneven along the way, and
+  it is **all or nothing** — if you cannot afford the whole round or the bank is
+  short, none of it happens and nothing is paid.
+- The button says why when it cannot go: not enough cash, a mortgage on the
+  group, or the bank out of houses. It disappears once the colour is all hotels.
+
+## 1.16.0
+
+- **Counter an offer instead of just taking it or leaving it.** An offer put to
+  you now carries **Accept · Counter · Decline**. Press Counter and the deal
+  table opens with their terms already turned round — what they asked of you is
+  sitting in *You give*, what they offered is in *You get* — so you only have to
+  change the part you do not like, and send it back.
+- It goes back and forth as a proper haggle: they can counter your counter. After
+  four passes somebody has to say yes or no, so a deal can never run all night.
+- Countering is the one thing you can do out of turn, because it is an answer
+  rather than a new offer.
+
+## 1.15.1
+
+- **The owner's sash carries their name on every rail**, not just along the
+  bottom. On the top row it had been sitting underneath the name strip; it now
+  steps into its own place against the colour band. On the left and right the
+  sash turns on its side and the name runs up or down it, stopping short of the
+  strip so a long name is never cut in half.
+- The price no longer lands on top of the sash on the left rail, and the little
+  owner pill that used to float on the painting is gone — the sash says it
+  better.
+
 ## 1.15.0
 
 - **The auction is three times the size** and properly under the hammer: the
