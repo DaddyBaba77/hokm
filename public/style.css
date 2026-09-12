@@ -1,6 +1,6 @@
 :root {
   --ink: #f4efe3;
-  --muted: #9db0a7;
+  --muted: #a2b4cd;
   --gold: #e6bd6d;
   --gold-dim: #a8843c;
   --teamA: #6fc3ff;
@@ -22,13 +22,22 @@ html, body {
   font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overscroll-behavior: none;
   background:
-    radial-gradient(ellipse 120% 80% at 50% 38%, #1d6a4f 0%, #0f4433 45%, #072018 78%, #04100c 100%),
-    #04100c;
+    radial-gradient(ellipse 120% 80% at 50% 42%, #17427c 0%, #0f2a55 42%, #081936 74%, #040c1c 100%),
+    #040c1c;
+}
+/* the woven ground: gold girih and rosettes on indigo, the way a carpet fills its field */
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: url("table-pattern.svg") repeat;
+  background-size: 112px 112px;
+  opacity: .72;
+  -webkit-mask-image: radial-gradient(ellipse 78% 72% at 50% 46%, #000 42%, rgba(0,0,0,.45) 78%, rgba(0,0,0,.9) 100%);
+          mask-image: radial-gradient(ellipse 78% 72% at 50% 46%, #000 42%, rgba(0,0,0,.45) 78%, rgba(0,0,0,.9) 100%);
 }
 body::before {
-  /* warm lamp glow over the table */
+  /* warm lamp glow over the middle of the table */
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background: radial-gradient(ellipse 60% 42% at 50% 44%, rgba(255, 226, 170, .10), transparent 70%);
+  background: radial-gradient(ellipse 58% 40% at 50% 46%, rgba(255, 226, 170, .10), transparent 72%);
 }
 
 .screen { position: relative; z-index: 1; height: 100dvh; display: flex; flex-direction: column; }
@@ -69,10 +78,10 @@ input {
   border-radius: 10px; padding: .7rem .8rem; width: 100%;
 }
 input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
-input::placeholder { color: #6d8279; }
+input::placeholder { color: #6d80a0; }
 
 .panel {
-  background: linear-gradient(180deg, rgba(10,38,29,.92), rgba(5,22,17,.94));
+  background: linear-gradient(180deg, rgba(14,38,74,.94), rgba(7,20,42,.96));
   border: 1px solid rgba(230,189,109,.25);
   border-radius: 20px; padding: 26px 24px; box-shadow: var(--shadow);
 }
@@ -277,6 +286,16 @@ input::placeholder { color: #6d8279; }
 /* ───────── board ───────── */
 .board { position: relative; flex: 1 1 auto; min-height: 250px; overflow: visible; }
 
+/* the medallion the cards land on, plus a pool of shadow to keep them readable */
+.board::before {
+  content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+  width: min(54vmin, 430px); aspect-ratio: 1; pointer-events: none; z-index: 1;
+  background:
+    radial-gradient(circle, rgba(3,10,26,.62) 0%, rgba(3,10,26,.4) 40%, transparent 68%),
+    url("table-medallion.svg") center / contain no-repeat;
+  opacity: .85;
+}
+
 .playzone {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   width: min(60%, 300px); aspect-ratio: 1.25; border-radius: 50%;
@@ -287,8 +306,8 @@ input::placeholder { color: #6d8279; }
   border: 2px dashed rgba(230,189,109,0); transition: border-color .2s, box-shadow .2s, transform .2s;
 }
 .zone-mark {
-  font-size: clamp(70px, 16vh, 130px); color: rgba(255,255,255,.045);
-  text-shadow: 0 0 30px rgba(0,0,0,.3); user-select: none;
+  font-size: clamp(54px, 12vh, 104px); color: rgba(230,189,109,.11);
+  text-shadow: 0 0 30px rgba(0,0,0,.35); user-select: none;
 }
 .zone-hint {
   position: absolute; bottom: 6%; font-size: .72rem; letter-spacing: .18em;
@@ -396,7 +415,7 @@ input::placeholder { color: #6d8279; }
 .emote-btn {
   position: absolute; z-index: 25;
   width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.35rem; line-height: 1;
-  color: var(--gold); background: radial-gradient(circle at 50% 30%, #17503c, #0a2b20);
+  color: var(--gold); background: radial-gradient(circle at 50% 30%, #1c4380, #0b1e40);
   border: 2px solid rgba(230,189,109,.55); box-shadow: 0 4px 14px rgba(0,0,0,.5);
   transition: transform .12s, box-shadow .15s, border-color .15s;
 }
@@ -407,7 +426,7 @@ input::placeholder { color: #6d8279; }
 .emote-menu {
   position: fixed; z-index: 55;
   display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px;
-  background: linear-gradient(180deg, rgba(12,44,34,.97), rgba(6,26,20,.97));
+  background: linear-gradient(180deg, rgba(14,40,78,.97), rgba(7,20,44,.97));
   border: 1px solid rgba(230,189,109,.45); border-radius: 14px;
   box-shadow: 0 14px 36px rgba(0,0,0,.6);
   animation: rise .18s ease;
@@ -536,7 +555,7 @@ input::placeholder { color: #6d8279; }
 }
 @keyframes fade { from { opacity: 0; } }
 .modal {
-  background: linear-gradient(180deg, #10362a, #0a2419);
+  background: linear-gradient(180deg, #143059, #091830);
   border: 1px solid rgba(230,189,109,.4); border-radius: 18px;
   padding: 24px; max-width: 420px; width: 100%; text-align: center; box-shadow: var(--shadow);
   animation: rise .3s cubic-bezier(.2,.9,.3,1);
@@ -569,7 +588,7 @@ input::placeholder { color: #6d8279; }
 /* ───────── log panel ───────── */
 .logpanel {
   position: fixed; right: 0; top: 0; bottom: 0; width: min(340px, 88vw); z-index: 70;
-  background: #0a271e; border-left: 1px solid rgba(230,189,109,.25);
+  background: #0a1e3d; border-left: 1px solid rgba(230,189,109,.25);
   display: flex; flex-direction: column; box-shadow: -14px 0 34px rgba(0,0,0,.5);
 }
 .logpanel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,.1); }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0
+
+- Retheme: the table is now a deep indigo ground woven with gold girih stars and
+  carpet rosettes, in place of the green felt.
+- The cards land on a gold medallion at the centre of the table, with a pool of
+  shadow beneath it so the cards stay easy to read.
+- Panels, modals, the log drawer and the emote button all recoloured to match.
+
 ## 1.1.0
 
 - Team banners now split the header in half: bigger crests, bigger names, both
