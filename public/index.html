@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>Hokm — حکم</title>
+<meta name="description" content="Play Hokm online with friends. Four players, two teams, no signup." />
+<meta name="theme-color" content="#0b1f18" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♠️</text></svg>" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ══════════ Home ══════════ -->
+<section id="home" class="screen">
+  <div class="panel home-card">
+    <h1 class="brand">HOKM <span>حکم</span></h1>
+    <p class="tagline">Four players. Two teams. One trump suit.</p>
+
+    <label class="field">
+      <span>Your name</span>
+      <input id="nameInput" maxlength="18" placeholder="e.g. John" autocomplete="nickname" />
+    </label>
+
+    <button id="createBtn" class="btn primary big">Create a table</button>
+
+    <div class="divider"><span>or join one</span></div>
+
+    <form id="joinForm" class="join-row">
+      <input id="codeInput" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" spellcheck="false" />
+      <button type="submit" class="btn big">Join</button>
+    </form>
+
+    <details class="rules">
+      <summary>How Hokm works</summary>
+      <ul>
+        <li>Four players in two teams; your partner sits across from you.</li>
+        <li>Cards are drawn until someone turns up an Ace — that player is the <b>Hakem</b> (the ruler).</li>
+        <li>The Hakem sees five cards and names the <b>Hokm</b> (trump) suit. Trump beats any other suit.</li>
+        <li>Everyone gets 13 cards. You must follow the suit that was led if you can. If you can't, play anything — trumping is optional.</li>
+        <li>Highest trump takes the trick; with no trump, the highest card of the led suit takes it. The winner leads next.</li>
+        <li>First team to <b>7 tricks</b> wins the round: 1 point normally, <b>2 for a Kot</b> (7–0 by the Hakem's team), <b>3 for a Hakem Koti</b> (7–0 against the Hakem).</li>
+        <li>The Hakem keeps the role if their team wins; otherwise it passes to the left. First team to <b>7 points</b> wins.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<!-- ══════════ Lobby ══════════ -->
+<section id="lobby" class="screen hidden">
+  <div class="panel lobby-card">
+    <div class="code-block">
+      <span class="code-label">Table code</span>
+      <div class="code-row">
+        <span id="roomCode" class="code">----</span>
+        <button id="copyBtn" class="btn ghost small">Copy link</button>
+      </div>
+      <p class="code-hint">Send the link to your friends — they just open it and type a name.</p>
+    </div>
+
+    <div class="seatgrid">
+      <div class="teamtag team-a">Team A</div>
+      <div class="teamtag team-b">Team B</div>
+      <div id="seatList" class="seats"></div>
+    </div>
+
+    <div class="lobby-actions">
+      <button id="randomBtn" class="btn ghost">Random teams</button>
+      <button id="fillBtn" class="btn ghost">Fill with bots</button>
+      <button id="startBtn" class="btn primary">Start game</button>
+    </div>
+    <p id="lobbyHint" class="hint"></p>
+  </div>
+</section>
+
+<!-- ══════════ Table ══════════ -->
+<section id="table" class="screen hidden">
+  <header class="hud">
+    <div class="banner a" id="bannerA"></div>
+    <div class="banner b" id="bannerB"></div>
+    <div class="hud-btns">
+      <button id="soundBtn" class="icon" aria-label="Sound">♪</button>
+      <button id="logBtn" class="icon" aria-label="Table log">☰</button>
+    </div>
+  </header>
+
+  <div class="board" id="board">
+    <div class="playzone" id="playzone">
+      <div class="zone-ring"></div>
+      <div class="zone-mark" id="zoneMark"></div>
+      <div class="zone-hint">release to play</div>
+    </div>
+
+    <div class="hero pos-top"    data-pos="top"></div>
+    <div class="hero pos-left"   data-pos="left"></div>
+    <div class="hero pos-right"  data-pos="right"></div>
+    <div class="hero pos-bottom" data-pos="bottom"></div>
+
+    <div class="trumpcard empty" id="trumpCard">
+      <span class="tc-label">HOKM</span>
+      <div class="tc-card"><span class="tc-suit" id="trumpSuit"></span></div>
+      <span class="tc-name" id="trumpName">not called</span>
+    </div>
+
+    <div class="pile a" id="pileA"></div>
+    <div class="pile b" id="pileB"></div>
+    <button id="emoteBtn" class="emote-btn" aria-label="Emote">☺</button>
+
+    <div class="slots" id="slots"></div>
+    <div class="fx" id="fx"></div>
+    <div class="msg-banner hidden" id="banner"></div>
+  </div>
+
+  <div class="handzone" id="handzone"><div class="hand" id="hand"></div></div>
+  <p id="prompt" class="prompt"></p>
+
+  <div id="emoteMenu" class="emote-menu hidden"></div>
+</section>
+
+<!-- ══════════ Overlays ══════════ -->
+<div id="trumpModal" class="overlay hidden">
+  <div class="modal">
+    <h2>Call the Hokm</h2>
+    <p>You are the Hakem. Choose the trump suit from these five cards.</p>
+    <div id="trumpHand" class="modal-hand"></div>
+    <div class="suit-picker">
+      <button class="suitbtn red" data-suit="H">♥</button>
+      <button class="suitbtn red" data-suit="D">♦</button>
+      <button class="suitbtn" data-suit="S">♠</button>
+      <button class="suitbtn" data-suit="C">♣</button>
+    </div>
+  </div>
+</div>
+
+<div id="roundModal" class="overlay hidden">
+  <div class="modal">
+    <div id="roundCrest" class="crest">7</div>
+    <h2 id="roundTitle">Round over</h2>
+    <p id="roundDetail"></p>
+    <div id="roundScores" class="round-scores"></div>
+    <p class="muted" id="roundNext"></p>
+  </div>
+</div>
+
+<div id="gameModal" class="overlay hidden">
+  <div class="modal">
+    <div class="crest gold">★</div>
+    <h2 id="gameTitle">Game over</h2>
+    <p id="gameDetail"></p>
+    <button id="againBtn" class="btn primary big">Back to the lobby</button>
+  </div>
+</div>
+
+<div id="logPanel" class="logpanel hidden">
+  <div class="logpanel-head">
+    <b>Table log</b>
+    <span class="logpanel-btns">
+      <button id="leaveBtn" class="btn ghost small">Leave table</button>
+      <button id="logClose" class="btn ghost small">Close</button>
+    </span>
+  </div>
+  <div id="logList" class="loglist"></div>
+  <form id="chatForm" class="chatform">
+    <input id="chatInput" maxlength="160" placeholder="Say something…" autocomplete="off" />
+    <button class="btn small">Send</button>
+  </form>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

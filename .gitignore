@@ -1,0 +1,10 @@
+node_modules/
+npm-debug.log*
+.DS_Store
+.env
+
+# local scratch — screenshots, one-off scripts, desktop drop folder
+shots/
+shot*.mjs
+dbg.mjs
+Claude outputs/
