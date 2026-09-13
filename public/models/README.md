@@ -1,21 +1,39 @@
-# The piece model
+# The piece
 
-Drop a **`piece.glb`** in this folder and every player's four men become that
-model, tinted in their colour. Nothing else needs changing — the board picks it
-up the next time somebody opens a Ghahr Nakon table, and falls back to the
-turned pawn it draws itself if the file is not here.
+`piece.glb` is what every player's four men are made of, tinted in their colour.
+The board falls back to a turned wooden pawn it draws itself if the file is not
+here.
 
-What the board does with it:
+The dragon in this folder started as a 250,000-triangle Meshy export with no
+normals, no texture coordinates and no material at all. `tools/make-piece.py`
+turned it into something twenty-four copies of can stand on a board at once:
 
-- it is measured and scaled so the widest part is about four fifths of a square,
+- **cut to about 6,000 triangles** by quadric decimation, which is where the
+  wings stop losing their shape;
+- **stood on the floor, centred and scaled** so it is exactly one unit tall,
   whatever units it was modelled in;
-- it is stood on the board, so model it with its feet at the origin or anywhere
-  else — the bottom of its bounding box becomes the bottom of the piece;
-- it is centred on the square by its bounding box, so an off-centre model is
-  fine;
-- every mesh inside it is given the player's colour, so textures and materials
-  in the file are replaced. One solid shape reads best.
+- **ambient occlusion baked into its vertex colours** — the board multiplies the
+  player's colour by that, so the folds of the wings and the underside of the
+  jaw stay dark instead of flooding flat;
+- **split into `dragon` and `plinth`**, so the thing it stands on can be stone
+  while the beast itself is the player's colour.
 
-Keep it small — a few thousand triangles is plenty, since twenty-four of them
-stand on the board at once. glTF binary (`.glb`) is the format; if you have an
-`.obj`, `.fbx` or a Blender file, send it over and it can be converted.
+## Using a different model
+
+    pip install trimesh fast-simplification numpy
+    python3 tools/make-piece.py your-model.glb public/models/piece.glb
+
+Anything trimesh can read goes in — `.glb`, `.obj`, `.stl`, `.ply`. Name a part
+"plinth", "base", "pedestal" or "stand" and it keeps the darker stone; anything
+else takes the player's colour. Nothing else in the game needs changing.
+
+What the board does with whatever comes out:
+
+- it is scaled so it stands about one and three-quarter squares tall, and reined
+  in if it is wide enough to overhang its neighbours;
+- it is stood on the board and given a ring at its feet in the player's colour,
+  so you can tell whose it is from straight overhead;
+- it is turned to face the way it is walking — outward in the yard, along the
+  path on the ring, and inward up the home column;
+- it picks up the candlelight like everything else, and glows a little brighter
+  when it is one you can move.

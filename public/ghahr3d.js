@@ -167,7 +167,9 @@ export function createBoard(opts) {
   camera.position.set(0, 116, 122);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  // Twenty-four dragons and a shadow pass: worth being careful on a phone.
+  const small = Math.min(innerWidth, innerHeight) < 820;
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small ? 1.5 : 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -188,17 +190,17 @@ export function createBoard(opts) {
   controls.target.set(0, 0, 0);
 
   /* ── the room ── */
-  const roomLight = new THREE.AmbientLight('#2a1c10', 0.55);
+  const roomLight = new THREE.AmbientLight('#33230f', 0.7);
   scene.add(roomLight);
   // the faintest hint of a moon through a window, so nothing is pure black
-  const fill = new THREE.DirectionalLight('#4a5a7a', 0.16);
+  const fill = new THREE.DirectionalLight('#5d6f92', 0.3);
   fill.position.set(-60, 80, -40);
   scene.add(fill);
 
   const candleLight = new THREE.PointLight('#ffb257', 95, 0, 1.35);
   candleLight.position.set(0, 11, 0);
   candleLight.castShadow = true;
-  candleLight.shadow.mapSize.set(1024, 1024);
+  candleLight.shadow.mapSize.set(small ? 512 : 1024, small ? 512 : 1024);
   candleLight.shadow.bias = -0.004;
   candleLight.shadow.camera.near = 1;
   candleLight.shadow.camera.far = 220;
@@ -237,16 +239,23 @@ export function createBoard(opts) {
       'models/piece.glb',
       (gltf) => {
         const src = gltf.scene;
-        // normalise it: sitting on y=0, about one square across
+        // Stand it on the floor and centre it, whatever units it was modelled
+        // in and wherever its origin happens to sit.
         const box = new THREE.Box3().setFromObject(src);
         const size = new THREE.Vector3(), centre = new THREE.Vector3();
         box.getSize(size); box.getCenter(centre);
-        const span = Math.max(size.x, size.z) || 1;
         src.position.set(-centre.x, -box.min.y, -centre.z);
         const wrap = new THREE.Group();
         wrap.add(src);
-        wrap.userData.fit = 1 / span;             // caller scales by tile size
-        wrap.userData.tall = size.y / span;
+        wrap.userData.tall = size.y || 1;
+        wrap.userData.span = Math.max(size.x, size.z) || 1;
+        // A part called "plinth" (or base, or pedestal) is the thing it stands
+        // on rather than the thing itself, and gets the darker stone.
+        wrap.traverse((n) => {
+          if (!n.isMesh) return;
+          const name = `${n.name} ${n.parent ? n.parent.name : ''}`.toLowerCase();
+          n.userData.plinth = /plinth|base|pedestal|stand/.test(name);
+        });
         pieceModel = wrap;
         resolve(true);
       },
@@ -446,30 +455,73 @@ export function createBoard(opts) {
   }
 
   function buildPieces(s) {
-    const tall = layout.man;
+    const square = layout.man;
     s.players.forEach((p, seat) => {
+      const colour = new THREE.Color(p.colour);
       for (let i = 0; i < 4; i++) {
-        let mesh;
-        const mat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(p.colour), roughness: 0.42, metalness: 0.12,
-          emissive: new THREE.Color(p.colour), emissiveIntensity: 0.12,
-        });
+        const group = new THREE.Group();
+        const mats = [];
+
+        // the ring at its feet: whose piece this is, readable from straight above
+        const ring = new THREE.Mesh(
+          new THREE.CylinderGeometry(square * 0.46, square * 0.5, square * 0.07, 24),
+          new THREE.MeshStandardMaterial({
+            color: colour, roughness: 0.4, metalness: 0.3,
+            emissive: colour, emissiveIntensity: 0.5,
+          })
+        );
+        ring.position.y = square * 0.035;
+        ring.receiveShadow = true;
+        ring.castShadow = false;
+        group.add(ring);
+        mats.push(ring.material);
+
         if (pieceModel) {
-          mesh = pieceModel.clone(true);
-          const k = pieceModel.userData.fit * layout.man * 0.94;
-          mesh.scale.setScalar(k);
-          mesh.traverse((n) => { if (n.isMesh) { n.material = mat; n.castShadow = true; n.receiveShadow = true; } });
+          const model = pieceModel.clone(true);
+          // sized by how tall it should stand, then reined in if it is a wide
+          // beast that would overhang its neighbours
+          const byHeight = (square * 1.85) / pieceModel.userData.tall;
+          const byWidth = (square * 0.92) / pieceModel.userData.span;
+          model.scale.setScalar(Math.min(byHeight, byWidth));
+          model.position.y = square * 0.06;
+          model.traverse((n) => {
+            if (!n.isMesh) return;
+            // The model carries its baked occlusion in its vertex colours, so
+            // multiplying by the player's colour keeps every fold and scale
+            // instead of flooding the whole beast with flat paint.
+            const plinth = n.userData.plinth;
+            n.material = new THREE.MeshStandardMaterial({
+              color: plinth ? new THREE.Color('#3a2c1f').lerp(colour, 0.22) : colour,
+              vertexColors: !!(n.geometry.attributes && n.geometry.attributes.color),
+              roughness: plinth ? 0.88 : 0.44,
+              metalness: plinth ? 0.05 : 0.1,
+              emissive: colour,
+              emissiveIntensity: plinth ? 0.06 : 0.17,
+            });
+            n.castShadow = !plinth;
+            n.receiveShadow = true;
+            mats.push(n.material);
+          });
+          group.add(model);
         } else {
-          mesh = new THREE.Mesh(pawnGeo, mat);
-          mesh.scale.setScalar(tall);
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
+          const mat = new THREE.MeshStandardMaterial({
+            color: colour, roughness: 0.42, metalness: 0.12,
+            emissive: colour, emissiveIntensity: 0.12,
+          });
+          const pawn = new THREE.Mesh(pawnGeo, mat);
+          pawn.scale.setScalar(square);
+          pawn.castShadow = true;
+          pawn.receiveShadow = true;
+          group.add(pawn);
+          mats.push(mat);
         }
-        mesh.userData.seat = seat;
-        mesh.userData.piece = i;
-        mesh.userData.mat = mat;
-        boardGroup.add(mesh);
-        pieces.push(mesh);
+
+        group.userData.seat = seat;
+        group.userData.piece = i;
+        group.userData.mats = mats;
+        group.userData.baseGlow = mats.map((m) => m.emissiveIntensity);
+        boardGroup.add(group);
+        pieces.push(group);
         shown.push(s.pieces[seat][i]);
       }
     });
@@ -531,6 +583,30 @@ export function createBoard(opts) {
     return layout.ring[(corner * state.leg + d) % state.ring];
   }
 
+  /**
+   * Which way a piece is looking. On the ring it faces the way it is walking,
+   * in the home column it faces in, and in the yard it faces the board, so the
+   * whole ring reads as a procession rather than a shelf of ornaments.
+   */
+  function headingFor(corner, d, pieceIndex) {
+    const here = pointFor(corner, d, pieceIndex);
+    let there;
+    if (d === -1) {
+      // waiting in the yard, looking out at whoever owns them
+      there = { x: here.x + (here.x - 50), y: here.y + (here.y - 50) };
+    } else if (d >= state.ring) {
+      const k = d - state.ring;
+      there = k + 1 < layout.home[corner].length
+        ? layout.home[corner][k + 1]
+        : { x: 50, y: 50 };
+    } else {
+      there = layout.ring[(corner * state.leg + d + 1) % state.ring];
+    }
+    const dx = there.x - here.x, dz = there.y - here.y;
+    if (Math.abs(dx) < 1e-6 && Math.abs(dz) < 1e-6) return 0;
+    return Math.atan2(dx, dz);
+  }
+
   function restY(d) {
     if (d === -1) return 1.1;
     if (d >= state.ring) return 1.65;
@@ -540,10 +616,23 @@ export function createBoard(opts) {
   function place(seat, i, d, instant) {
     const mesh = pieces[seat * 4 + i];
     if (!mesh) return;
-    const p = pointFor(state.corner[seat], d, i);
+    const corner = state.corner[seat];
+    const p = pointFor(corner, d, i);
     const target = world(p, restY(d));
+    face(mesh, headingFor(corner, d, i), instant);
     if (instant) mesh.position.copy(target);
     else mesh.userData.glide = { from: mesh.position.clone(), to: target, t0: performance.now(), ms: 170 };
+  }
+
+  /** Turn a piece towards a heading, the short way round. */
+  function face(mesh, want, instant) {
+    if (instant) { mesh.rotation.y = want; mesh.userData.turn = null; return; }
+    let from = mesh.rotation.y;
+    let delta = want - from;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    if (Math.abs(delta) < 0.02) return;
+    mesh.userData.turn = { from, to: from + delta, t0: performance.now(), ms: 220 };
   }
 
   function setPieces(rows, instant) {
@@ -593,6 +682,7 @@ export function createBoard(opts) {
 
     // out of the yard is a single hop, not a walk
     if (move.kind === 'exit') {
+      face(mesh, headingFor(corner, 0, move.piece), false);
       hop(mesh, world(pointFor(corner, 0, move.piece), restY(0)), 420, () => {
         shown[idx] = 0;
         finishWalk(move, done);
@@ -624,6 +714,7 @@ export function createBoard(opts) {
       const d = path[k];
       shown[idx] = d;
       const to = world(pointFor(corner, d, move.piece), restY(d));
+      face(mesh, headingFor(corner, d, move.piece), false);
       onStep && onStep(k + 1, total);
       hop(mesh, to, hurry ? 70 : STEP_MS, () => { k++; stepOnce(); });
     };
@@ -696,7 +787,9 @@ export function createBoard(opts) {
     pickable = list;
     for (const m of pieces) {
       const on = list.includes(m);
-      m.userData.mat.emissiveIntensity = on ? 0.45 : 0.12;
+      const mats = m.userData.mats || [];
+      const base = m.userData.baseGlow || [];
+      mats.forEach((mat, k) => { mat.emissiveIntensity = (base[k] || 0.1) + (on ? 0.55 : 0); });
     }
   }
 
@@ -866,6 +959,12 @@ export function createBoard(opts) {
   }
 
   function stepMesh(m, now) {
+    const t = m.userData.turn;
+    if (t) {
+      const k = clamp((now - t.t0) / t.ms, 0, 1);
+      m.rotation.y = t.from + (t.to - t.from) * easeOut(k);
+      if (k >= 1) m.userData.turn = null;
+    }
     const g = m.userData.glide;
     if (g) {
       const k = clamp((now - g.t0) / g.ms, 0, 1);
@@ -878,7 +977,7 @@ export function createBoard(opts) {
       const e = ease(k);
       m.position.lerpVectors(a.from, a.to, e);
       m.position.y += Math.sin(Math.PI * k) * a.lift;
-      if (a.spin) m.rotation.y = k * Math.PI * 4;
+      if (a.spin) { m.userData.turn = null; m.rotation.y = k * Math.PI * 4; }
       if (k >= 1) {
         m.userData.arc = null;
         m.rotation.y = 0;

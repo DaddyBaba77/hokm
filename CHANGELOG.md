@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.22.0
+
+- **The pieces are dragons.** John's model, processed into something twenty-four
+  copies of can stand on a board at once: cut from 250,000 triangles to about
+  6,000, given the normals it arrived without, and with ambient occlusion baked
+  into its vertex colours so the candle finds the folds of its wings instead of
+  washing the whole beast flat.
+- **Each player's dragons are their own colour**, and the plinth each one stands
+  on stays stone. A ring at its feet in the same colour makes whose it is
+  obvious from straight overhead, and the ones you can move this turn glow.
+- **They face where they are going** — outward in the yard while they wait,
+  along the path as they walk the ring, and inward up the home column. They turn
+  as they go rather than snapping round.
+- **A different model is one command away.** `tools/make-piece.py` does the whole
+  job — decimation, normals, the occlusion bake, splitting the plinth off — for
+  any model trimesh can read. `public/models/README.md` has the details.
+- The two greens were a lime and a mint that read as the same colour across a
+  dark table. The second is now a proper emerald.
+- Gentler on a phone: half-size shadow maps and a capped pixel ratio on small
+  screens, and only the beast itself throws a shadow.
+
 ## 1.21.0
 
 - **Ghahr Nakon is now a real three-dimensional board.** A table in a dark room

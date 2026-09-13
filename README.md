@@ -194,9 +194,12 @@ piece up and drag it onto one of the glowing squares, tap it and let it walk
 itself, or press **Move it for me**; either way the squares are counted off on
 screen as the piece steps them.
 
-Drop a `piece.glb` into `public/models/` and the men become your own model in
-each player's colour — see `public/models/README.md`. Three.js lives in
-`public/vendor/` and is only fetched when a Ghahr table is opened.
+The men are dragons, each player's in their own colour with a ring at their feet
+so you can tell whose is whose from overhead, and they turn to face the way they
+are walking. To use a different model, run `tools/make-piece.py` over it and drop
+the result in `public/models/` — `public/models/README.md` explains what that
+does and what the board expects. Three.js lives in `public/vendor/` and is only
+fetched when a Ghahr table is opened.
 
 The host picks the board in the lobby:
 
@@ -264,6 +267,8 @@ src/ghahr.js          Ghahr Nakon — both boards, the yards, the home columns, 
 src/ghahr-bot.js      Ghahr Nakon bot play: knocking, running, and staying out of range
 public/ghahr3d.js     the Ghahr board as a 3D scene — candle, pieces, die, dragging
 public/vendor/        Three.js, served by the game rather than fetched from a CDN
+tools/make-piece.py   turns a raw 3D model into the board piece: decimation,
+                      normals, a baked occlusion pass, and the plinth split off
 public/               the whole client (one HTML page, one stylesheet, a script per game)
 test/simulate.js      thousands of bot Hokm games, checked against every rule
 test/snakes.js        hundreds of Snakes games, checked against every rule

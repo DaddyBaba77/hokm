@@ -17,8 +17,10 @@ export const BOARDS = {
   hex:   { id: 'hex',   name: 'The hexagon', seats: 6, ring: 60 },
 };
 
+// Six colours nobody has to squint at. The two greens used to be a lime and a
+// mint, which read as the same colour across a dark table.
 export const TOKEN_COLOURS = [
-  '#ff5d5d', '#b8f55a', '#63d788', '#ffd15c', '#c98bff', '#ff9c4d',
+  '#ff5d5d', '#b8f55a', '#2ec27e', '#ffd15c', '#c98bff', '#ff9c4d',
 ];
 
 export const DEFAULT_SETTINGS = {
