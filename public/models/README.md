@@ -12,9 +12,10 @@ turned it into something twenty-four copies of can stand on a board at once:
   wings stop losing their shape;
 - **stood on the floor, centred and scaled** so it is exactly one unit tall,
   whatever units it was modelled in;
-- **ambient occlusion baked into its vertex colours** — the board multiplies the
-  player's colour by that, so the folds of the wings and the underside of the
-  jaw stay dark instead of flooding flat;
+- **occlusion and curvature baked into its vertex colours** — the board
+  multiplies the player's colour by that, so creases lose the light and ridges
+  catch it, instead of the whole beast flooding flat. Occlusion alone was not
+  enough at the size a piece is actually seen;
 - **split into `dragon` and `plinth`**, so the thing it stands on can be stone
   while the beast itself is the player's colour.
 
@@ -35,5 +36,6 @@ What the board does with whatever comes out:
   so you can tell whose it is from straight overhead;
 - it is turned to face the way it is walking — outward in the yard, along the
   path on the ring, and inward up the home column;
-- it picks up the candlelight like everything else, and glows a little brighter
-  when it is one you can move.
+- it picks up the firelight like everything else, carries a rim of its own
+  colour along its edge so it reads against the dark board, and glows a little
+  brighter when it is one you can move.

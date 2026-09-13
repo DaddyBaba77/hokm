@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.23.0
+
+- **A brazier instead of a candle.** A brass bowl on three legs at the middle of
+  the board, full of coals that each breathe at their own rate, with flames
+  licking over them and sparks drifting up and going out. The whole room is
+  still lit by it, so when the fire dips the board dips with it — and dragons
+  sat round a fire is the right picture.
+- **The dragons read properly now.** Occlusion alone left them looking like
+  coloured silhouettes at board size, so the piece now carries a **curvature
+  bake** as well: ridges — the crest, the brow, the leading edge of a wing —
+  catch the light, and creases lose it. On top of that each one gets a **rim of
+  its own colour** along its edge, which is what separates it from the dark
+  board behind it.
+- The bodies are matte rather than glossy, and a little deeper in colour, so the
+  baked shading has somewhere to rise to instead of everything sitting at one
+  brightness.
+- They stand slightly shorter, so four in a yard read as four dragons rather
+  than one thicket.
+
 ## 1.22.0
 
 - **The pieces are dragons.** John's model, processed into something twenty-four

@@ -91,8 +91,39 @@ for d in range(DIRS):
 ao = 1.0 - hits / DIRS
 # keep it as shading rather than dirt: lift the floor and flatten the top
 ao = np.clip(ao, 0.0, 1.0) ** 0.85
-ao = 0.54 + 0.46 * (ao - ao.min()) / max(1e-6, ao.max() - ao.min())
-print(f"ambient occlusion {ao.min():.2f} – {ao.max():.2f}")
+ao = (ao - ao.min()) / max(1e-6, ao.max() - ao.min())
+
+# ── and a curvature pass, which is what actually makes it read
+# Occlusion alone leaves a piece this small looking like a coloured silhouette.
+# Ridges — the crest, the brow, the leading edge of a wing — need to catch the
+# light, and creases need to lose it. Comparing each vertex to where its
+# neighbours sit says which it is.
+edges = low.edges_unique
+nb_sum = np.zeros_like(verts)
+nb_count = np.zeros(len(verts))
+for a, b in ((edges[:, 0], edges[:, 1]), (edges[:, 1], edges[:, 0])):
+    np.add.at(nb_sum, a, verts[b])
+    np.add.at(nb_count, a, 1)
+nb_count = np.maximum(nb_count, 1)[:, None]
+away = verts - nb_sum / nb_count
+scale = np.linalg.norm(away, axis=1, keepdims=True) + 1e-9
+convex = np.sum((away / scale) * normals, axis=1)          # +1 ridge, -1 crease
+convex = np.clip(convex, -1, 1)
+# smooth it once so single stray vertices do not sparkle
+sm = np.zeros(len(verts))
+cnt = np.zeros(len(verts))
+for a, b in ((edges[:, 0], edges[:, 1]), (edges[:, 1], edges[:, 0])):
+    np.add.at(sm, a, convex[b])
+    np.add.at(cnt, a, 1)
+convex = 0.5 * convex + 0.5 * (sm / np.maximum(cnt, 1))
+
+shade = (0.30 + 0.70 * ao) * (0.78 + 0.44 * convex)
+shade = np.clip(shade, 0.0, 1.4)
+lo, hi = np.percentile(shade, 2), np.percentile(shade, 98)
+shade = np.clip((shade - lo) / max(1e-6, hi - lo), 0.0, 1.0)
+ao = 0.24 + 0.76 * shade                                    # deep creases, bright ridges
+print(f"shading {ao.min():.2f} – {ao.max():.2f}, "
+      f"convexity {convex.min():.2f} – {convex.max():.2f}")
 
 # ── split the beast from the plinth it stands on
 cent = low.triangles_center[:, 1]

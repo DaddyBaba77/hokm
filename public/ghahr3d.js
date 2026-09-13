@@ -1,8 +1,8 @@
 /* Ghahr Nakon — قهر نکن, in three dimensions.
  *
- * A dark room with one candle on the table. Everything you can see is lit by
- * that flame: the board glows where the light falls, the pieces throw shadows,
- * and when the flame gutters the whole room dims with it.
+ * A dark room with a brazier burning on the table. Everything you can see is lit
+ * by that fire: the board glows where the light falls, the dragons throw
+ * shadows, and when the coals dim the whole room dims with them.
  *
  * This module owns the board and nothing else. The turn state, the side panel
  * and the log all live in ghahr.js, which drives this through a small API:
@@ -93,8 +93,9 @@ const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const world = (p, y = 0) => new THREE.Vector3(p.x - 50, y, p.y - 50);
 
 /**
- * A candle, as a number. Several sines that never line up, so it wanders
- * instead of pulsing, plus the odd deeper gutter where it nearly goes out.
+ * Firelight, as a number. Several sines that never line up, so it wanders
+ * instead of pulsing, plus the odd deeper dip where it nearly goes out. Every
+ * coal, flame and board square reads it at its own offset.
  */
 function flame(t) {
   const fast = Math.sin(t * 11.3) * 0.5 + Math.sin(t * 17.7) * 0.31 + Math.sin(t * 29.1) * 0.19;
@@ -136,6 +137,34 @@ function dieFace(n) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   return tex;
+}
+
+/**
+ * A rim of light round the edge of a piece, in its own colour.
+ *
+ * Standard shading alone leaves a small dark-red dragon on a dark board as a
+ * silhouette. A fresnel term — brightest where the surface turns away from you
+ * — draws the horizon of the model and separates it from whatever is behind it,
+ * which is what your eye uses to read a shape at this size.
+ */
+function addRim(material, colour, strength = 0.9) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.rimColour = { value: new THREE.Color(colour) };
+    shader.uniforms.rimPower = { value: strength };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('void main() {', 'uniform vec3 rimColour;\nuniform float rimPower;\nvoid main() {');
+    const marks = ['#include <opaque_fragment>', '#include <output_fragment>'];
+    const mark = marks.find((m) => shader.fragmentShader.includes(m));
+    const inject = `
+      float rimEdge = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition)));
+      rimEdge = pow(clamp(rimEdge, 0.0, 1.0), 2.4);
+      outgoingLight += rimColour * rimEdge * rimPower;
+    `;
+    if (mark) shader.fragmentShader = shader.fragmentShader.replace(mark, inject + mark);
+    material.userData.shader = shader;
+  };
+  material.customProgramCacheKey = () => `rim${strength.toFixed(2)}${colour}`;
+  return material;
 }
 
 /** The turned pawn we use until a real model turns up. */
@@ -190,7 +219,7 @@ export function createBoard(opts) {
   controls.target.set(0, 0, 0);
 
   /* ── the room ── */
-  const roomLight = new THREE.AmbientLight('#33230f', 0.7);
+  const roomLight = new THREE.AmbientLight('#2e1f0d', 0.5);
   scene.add(roomLight);
   // the faintest hint of a moon through a window, so nothing is pure black
   const fill = new THREE.DirectionalLight('#5d6f92', 0.3);
@@ -230,6 +259,7 @@ export function createBoard(opts) {
   let shown = [];              // the distance each piece is drawn at
   let pieceModel = null;       // the loaded GLB, if there is one
   let candle = null, flameMesh = null, halo = null;
+  let coals = [], flames = [], sparks = null, sparkLife = null, sparkSeed = null;
   let die = null, dieIdle = 0, dieHome = null, tray = null;
   let ready = false;
 
@@ -392,53 +422,131 @@ export function createBoard(opts) {
     }
     boardGroup.userData.ringTiles = ringTiles;
 
-    buildCandle(u * layout.candle);
+    buildBrazier(u * layout.candle);
     buildPieces(s);
     buildDie(u);
     ready = true;
   }
 
-  function buildCandle(size) {
+  /**
+   * The brazier at the middle of the table. A brass bowl of embers, each coal
+   * breathing at its own rate, with low flames over them and sparks going up —
+   * so the light the whole room is lit by never settles.
+   */
+  function buildBrazier(size) {
     candle = new THREE.Group();
-    const wax = new THREE.Mesh(
-      new THREE.CylinderGeometry(size * 0.2, size * 0.23, size * 0.78, 20),
-      new THREE.MeshStandardMaterial({
-        color: '#f0e2c2', roughness: 0.55, metalness: 0,
-        emissive: new THREE.Color('#ffb257'), emissiveIntensity: 0.22,
-      })
-    );
-    wax.position.y = size * 0.39;
-    wax.castShadow = true;
-    wax.receiveShadow = true;
-    candle.add(wax);
+    const brass = (rough, metal) => new THREE.MeshStandardMaterial({
+      color: '#7d5a28', roughness: rough, metalness: metal,
+      emissive: new THREE.Color('#ff9436'), emissiveIntensity: 0.1,
+    });
 
-    const dish = new THREE.Mesh(
-      new THREE.CylinderGeometry(size * 0.42, size * 0.34, size * 0.09, 24),
-      new THREE.MeshStandardMaterial({ color: '#6b4a1e', roughness: 0.38, metalness: 0.6 })
-    );
-    dish.position.y = size * 0.045;
-    dish.receiveShadow = true;
-    candle.add(dish);
+    // the bowl, turned on a lathe
+    const profile = [
+      [0.00, 0.00], [0.30, 0.02], [0.52, 0.12], [0.62, 0.30], [0.64, 0.42],
+      [0.58, 0.44], [0.56, 0.32], [0.46, 0.14], [0.26, 0.05], [0.00, 0.03],
+    ].map(([x, y]) => new THREE.Vector2(x * size, y * size));
+    const bowl = new THREE.Mesh(new THREE.LatheGeometry(profile, 26), brass(0.42, 0.72));
+    bowl.position.y = size * 0.3;
+    bowl.castShadow = true;
+    bowl.receiveShadow = true;
+    candle.add(bowl);
 
-    flameMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(size * 0.1, 14, 14),
-      new THREE.MeshBasicMaterial({ color: '#ffd79a' })
+    // a rolled rim round the top, which is what catches the firelight
+    const rim = new THREE.Mesh(
+      new THREE.TorusGeometry(size * 0.62, size * 0.042, 8, 30),
+      brass(0.3, 0.85)
     );
-    flameMesh.scale.set(0.72, 1.7, 0.72);
-    flameMesh.position.y = size * 0.92;
-    candle.add(flameMesh);
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = size * 0.72;
+    rim.castShadow = true;
+    candle.add(rim);
+
+    // three legs
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + 0.4;
+      const leg = new THREE.Mesh(
+        new THREE.CylinderGeometry(size * 0.045, size * 0.07, size * 0.34, 8),
+        brass(0.5, 0.6)
+      );
+      leg.position.set(Math.cos(a) * size * 0.34, size * 0.15, Math.sin(a) * size * 0.34);
+      leg.rotation.z = -Math.cos(a) * 0.24;
+      leg.rotation.x = Math.sin(a) * 0.24;
+      leg.castShadow = true;
+      candle.add(leg);
+    }
+
+    // the coals
+    coals = [];
+    const coalGeo = new THREE.IcosahedronGeometry(size * 0.09, 0);
+    for (let k = 0; k < 30; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(Math.random()) * size * 0.48;
+      const m = new THREE.Mesh(coalGeo, new THREE.MeshStandardMaterial({
+        color: '#1c1109', roughness: 0.95, metalness: 0,
+        emissive: new THREE.Color('#ff6a12'), emissiveIntensity: 0.5,
+      }));
+      m.position.set(Math.cos(a) * r, size * (0.66 + Math.random() * 0.06), Math.sin(a) * r);
+      m.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+      m.scale.setScalar(0.6 + Math.random() * 0.7);
+      const h = Math.sin(k * 12.9898) * 43758.5453;
+      m.userData.phase = (h - Math.floor(h)) * 9;
+      m.userData.hot = 0.5 + Math.random() * 0.9;      // some coals are livelier
+      candle.add(m);
+      coals.push(m);
+    }
+
+    // low flames licking over them
+    flames = [];
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + Math.random();
+      const r = Math.random() * size * 0.34;
+      const fl = new THREE.Mesh(
+        new THREE.ConeGeometry(size * 0.15, size * 0.5, 7, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: '#ffb14d', transparent: true, opacity: 0.72,
+          blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+        })
+      );
+      fl.position.set(Math.cos(a) * r, size * 0.95, Math.sin(a) * r);
+      const hh = Math.sin((k + 3) * 78.233) * 43758.5453;
+      fl.userData.phase = (hh - Math.floor(hh)) * 7;
+      fl.userData.base = fl.position.clone();
+      candle.add(fl);
+      flames.push(fl);
+    }
+    flameMesh = flames[0];
+
+    // sparks, drifting up and going out
+    const SPARKS = 46;
+    const pos = new Float32Array(SPARKS * 3);
+    sparkLife = new Float32Array(SPARKS);
+    sparkSeed = new Float32Array(SPARKS * 3);
+    for (let k = 0; k < SPARKS; k++) {
+      sparkLife[k] = Math.random();
+      sparkSeed[k * 3] = (Math.random() - 0.5) * size * 0.7;
+      sparkSeed[k * 3 + 1] = size * (2.4 + Math.random() * 2.2);
+      sparkSeed[k * 3 + 2] = (Math.random() - 0.5) * size * 0.7;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    sparks = new THREE.Points(geo, new THREE.PointsMaterial({
+      color: '#ffc46a', size: size * 0.075, transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+    }));
+    sparks.userData.size = size;
+    candle.add(sparks);
 
     halo = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: haloTexture(), color: '#ffab4d', transparent: true,
+      map: haloTexture(), color: '#ff9838', transparent: true,
       blending: THREE.AdditiveBlending, depthWrite: false,
     }));
-    halo.scale.set(size * 3.4, size * 3.4, 1);
-    halo.position.y = size * 0.92;
+    halo.scale.set(size * 4.2, size * 4.2, 1);
+    halo.position.y = size * 0.8;
     candle.add(halo);
 
     candle.position.set(0, 0.4, 0);
     boardGroup.add(candle);
-    candleLight.position.set(0, size * 0.95 + 0.4, 0);
+    candleLight.position.set(0, size * 0.85 + 0.4, 0);
   }
 
   function haloTexture() {
@@ -480,7 +588,7 @@ export function createBoard(opts) {
           const model = pieceModel.clone(true);
           // sized by how tall it should stand, then reined in if it is a wide
           // beast that would overhang its neighbours
-          const byHeight = (square * 1.85) / pieceModel.userData.tall;
+          const byHeight = (square * 1.55) / pieceModel.userData.tall;
           const byWidth = (square * 0.92) / pieceModel.userData.span;
           model.scale.setScalar(Math.min(byHeight, byWidth));
           model.position.y = square * 0.06;
@@ -490,14 +598,22 @@ export function createBoard(opts) {
             // multiplying by the player's colour keeps every fold and scale
             // instead of flooding the whole beast with flat paint.
             const plinth = n.userData.plinth;
-            n.material = new THREE.MeshStandardMaterial({
-              color: plinth ? new THREE.Color('#3a2c1f').lerp(colour, 0.22) : colour,
+            const mat = new THREE.MeshStandardMaterial({
+              // a deeper body colour, so the baked ridges have somewhere to
+              // rise to rather than everything sitting at the same brightness
+              color: plinth
+                ? new THREE.Color('#33261a').lerp(colour, 0.18)
+                : colour.clone().multiplyScalar(0.88),
               vertexColors: !!(n.geometry.attributes && n.geometry.attributes.color),
-              roughness: plinth ? 0.88 : 0.44,
-              metalness: plinth ? 0.05 : 0.1,
+              // matte, and barely self-lit: a painted piece, not coloured glass
+              roughness: plinth ? 0.92 : 0.62,
+              metalness: plinth ? 0.04 : 0.06,
               emissive: colour,
-              emissiveIntensity: plinth ? 0.06 : 0.17,
+              emissiveIntensity: plinth ? 0.03 : 0.04,
             });
+            n.material = plinth
+              ? mat
+              : addRim(mat, colour.clone().lerp(new THREE.Color('#fff1d0'), 0.34), 0.3);
             n.castShadow = !plinth;
             n.receiveShadow = true;
             mats.push(n.material);
@@ -922,23 +1038,50 @@ export function createBoard(opts) {
     raf = requestAnimationFrame(frame);
     t = now / 1000;
 
-    // the candle
+    // the fire
     const f = quiet ? 0.88 : flame(t);
-    candleLight.intensity = 58 + f * 46;
+    candleLight.intensity = 62 + f * 48;
     if (!quiet) {
-      candleLight.position.x = Math.sin(t * 5.1) * 0.5 * f;
-      candleLight.position.z = Math.cos(t * 6.3) * 0.5 * f;
+      candleLight.position.x = Math.sin(t * 5.1) * 0.6 * f;
+      candleLight.position.z = Math.cos(t * 6.3) * 0.6 * f;
     }
-    if (flameMesh) {
-      flameMesh.scale.set(0.62 + f * 0.18, 1.3 + f * 0.7, 0.62 + f * 0.18);
-      flameMesh.position.x = Math.sin(t * 7.7) * 0.16 * f;
-      flameMesh.material.color.setRGB(1, 0.72 + f * 0.2, 0.4 + f * 0.3);
+    // every coal breathes on its own, so the bed never pulses as one thing
+    for (const c of coals) {
+      const g = quiet ? 0.8 : flame(t * 0.62 + c.userData.phase);
+      c.material.emissiveIntensity = 0.16 + g * 1.5 * c.userData.hot;
+    }
+    for (const fl of flames) {
+      const g = quiet ? 0.7 : flame(t * 1.35 + fl.userData.phase);
+      fl.scale.set(0.55 + g * 0.5, 0.5 + g * 1.25, 0.55 + g * 0.5);
+      fl.position.x = fl.userData.base.x + Math.sin(t * 3.1 + fl.userData.phase) * 0.5 * g;
+      fl.position.z = fl.userData.base.z + Math.cos(t * 2.7 + fl.userData.phase) * 0.5 * g;
+      fl.material.opacity = 0.24 + g * 0.6;
+      fl.material.color.setRGB(1, 0.56 + g * 0.3, 0.18 + g * 0.34);
+    }
+    if (sparks && !quiet) {
+      const arr = sparks.geometry.attributes.position.array;
+      const sz = sparks.userData.size;
+      const dt = Math.min(0.05, (now - (sparks.userData.last || now)) / 1000);
+      sparks.userData.last = now;
+      for (let k = 0; k < sparkLife.length; k++) {
+        sparkLife[k] += dt * (0.22 + (k % 7) * 0.03);
+        if (sparkLife[k] > 1) {
+          sparkLife[k] = 0;
+          sparkSeed[k * 3] = (Math.random() - 0.5) * sz * 0.7;
+          sparkSeed[k * 3 + 2] = (Math.random() - 0.5) * sz * 0.7;
+        }
+        const L = sparkLife[k];
+        arr[k * 3] = sparkSeed[k * 3] + Math.sin(t * 2 + k) * sz * 0.3 * L;
+        arr[k * 3 + 1] = sz * 0.85 + sparkSeed[k * 3 + 1] * L;
+        arr[k * 3 + 2] = sparkSeed[k * 3 + 2] + Math.cos(t * 1.7 + k) * sz * 0.3 * L;
+      }
+      sparks.geometry.attributes.position.needsUpdate = true;
+      sparks.material.opacity = 0.75 * (0.6 + f * 0.5);
     }
     if (halo) {
-      const k = 0.82 + f * 0.4;
-      halo.scale.set(halo.userData.s0 = halo.userData.s0 || halo.scale.x, halo.scale.y, 1);
-      halo.material.opacity = 0.5 + f * 0.45;
-      halo.scale.setScalar((halo.userData.s0 || 30) * k);
+      halo.userData.s0 = halo.userData.s0 || halo.scale.x;
+      halo.material.opacity = 0.42 + f * 0.5;
+      halo.scale.setScalar(halo.userData.s0 * (0.86 + f * 0.34));
     }
 
     // the board, guttering unevenly

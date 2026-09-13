@@ -186,8 +186,8 @@ up your own home column; first player with all four parked wins. Land on somebod
 else and they go all the way back to their yard — which is where the name comes
 from.
 
-It is played on a real three-dimensional board: a dark room, one candle on the
-table, and everything you can see lit by that flame. Swing the camera round with
+It is played on a real three-dimensional board: a dark room, a brazier of coals
+burning on the table, and everything you can see lit by that fire. Swing the camera round with
 a drag on the empty table; the view starts behind your own yard. The die sits in
 a tray at your elbow — press it to throw it. When it is your move you can pick a
 piece up and drag it onto one of the glowing squares, tap it and let it walk
