@@ -6,7 +6,7 @@ const SUIT_NAME = { S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' };
 const RED = new Set(['H', 'D']);
 const RANK_LABEL = { T: '10' };
 const RANK_VALUE = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
-const VERSION = '1.19.0';
+const VERSION = '1.20.0';
 const TEAM_NAME = { A: 'Azure', B: 'Crimson' };
 const POINTS_TO_WIN = 7;
 
@@ -172,7 +172,7 @@ function toast(msg) {
 }
 
 function show(screen) {
-  for (const s of ['home', 'lobby', 'table', 'snakes', 'monopoly']) $(s).classList.toggle('hidden', s !== screen);
+  for (const s of ['home', 'lobby', 'table', 'snakes', 'monopoly', 'ghahr']) $(s).classList.toggle('hidden', s !== screen);
 }
 
 /* ───────────────────────── stepping back ─────────────────────────
@@ -368,6 +368,7 @@ function connect() {
   socket.on('disconnect', () => toast('Connection lost — reconnecting…'));
   if (window.Snakes) window.Snakes.init({ socket, sound, toast });
   if (window.Bazaar) window.Bazaar.init({ socket, sound, toast });
+  if (window.Ghahr) window.Ghahr.init({ socket, sound, toast });
   return socket;
 }
 
@@ -398,6 +399,9 @@ function paintGamePick() {
     monopoly: { main: 'BAZAAR', sub: 'بازار', wide: false,
                 tag: 'Two to eight traders. Buy the bazaar, and bleed the rest dry.',
                 create: 'Create a Bazaar table', how: 'How Bazaar works', rules: 'bazaarRules' },
+    ghahr:    { main: 'GHAHR NAKON', sub: 'قهر نکن', wide: true,
+                tag: 'Four pieces each, one die, and absolutely no sulking.',
+                create: 'Create a Ghahr Nakon table', how: 'How Ghahr Nakon works', rules: 'ghahrRules' },
   }[chosenGame] || {};
   $('brandMain').textContent = look.main;
   $('brandSub').textContent = look.sub;
@@ -405,7 +409,7 @@ function paintGamePick() {
   $('tagline').textContent = look.tag;
   $('createBtn').textContent = look.create;
   document.querySelector('.rules summary').textContent = look.how;
-  for (const id of ['hokmRules', 'snakeRules', 'bazaarRules']) {
+  for (const id of ['hokmRules', 'snakeRules', 'bazaarRules', 'ghahrRules']) {
     $(id).classList.toggle('hidden', id !== look.rules);
   }
 }
@@ -609,7 +613,11 @@ function renderSettings() {
     box.checked = !!cfg[box.dataset.key];
     box.disabled = !S.isHost;
   }
-  $('setMinutesRow').classList.toggle('hidden', cfg.endMode !== 'timed');
+  // each game only shows its own rows
+  for (const row of panel.querySelectorAll('.set-row[data-for]')) {
+    row.classList.toggle('hidden', row.dataset.for !== S.gameType);
+  }
+  $('setMinutesRow').classList.toggle('hidden', S.gameType !== 'monopoly' || cfg.endMode !== 'timed');
   $('setHint').textContent = S.isHost
     ? 'Everyone at the table sees these as you change them.'
     : 'Only the host can change these.';
@@ -1303,6 +1311,7 @@ for (const b of document.querySelectorAll('.suitbtn')) {
 }
 $('againBtn').onclick = () => socket.emit('newGame');
 $('mAgain').onclick = () => socket.emit('newGame');
+$('ghAgain').onclick = () => socket.emit('newGame');
 $('logBtn').onclick = () => $('logPanel').classList.remove('hidden');
 $('logClose').onclick = () => $('logPanel').classList.add('hidden');
 $('chatForm').onsubmit = (e) => {
@@ -1385,6 +1394,12 @@ function render() {
     return;
   }
 
+  if (S.game && S.gameType === 'ghahr') {
+    show('ghahr');
+    window.Ghahr.render(S.game);
+    return;
+  }
+
   if (S.game && S.gameType === 'snakes') {
     show('snakes');
     window.Snakes.render(S);
@@ -1403,6 +1418,7 @@ function render() {
     renderLobby();
     if (window.Snakes) window.Snakes.reset();
     if (window.Bazaar) window.Bazaar.reset();
+    if (window.Ghahr) window.Ghahr.reset();
     prev = null;
     handCards.forEach((el) => el.remove());
     handCards.clear();

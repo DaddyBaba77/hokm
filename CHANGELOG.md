@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.20.0
+
+- **A fourth game: Ghahr Nakon — قهر نکن.** *"Don't sulk."* Four pieces each,
+  a six to get out of the yard, all the way round and up your own home column.
+  Land on somebody and they go back to the start — hence the name.
+- **Two boards, and the host picks.** The cross seats up to four; the hexagon
+  seats up to six. Sit five or six down at a cross table and it hands you the
+  hexagon rather than refusing.
+- **Three tries for a six** is on by default: with everything still in the yard
+  you get three rolls to find one. Three more house rules are there to switch on
+  — a six must bring a piece out, you must knock somebody back when you can, and
+  an exact roll to get home.
+- **Played in the dark.** The board is a room lit by one candle. The path round
+  it glows amber and *gutters* — every square on its own rhythm, dipping and
+  catching the way a flame does, never pulsing in unison like a lamp. Your start
+  square and your home column burn in your own colour, and the flame in the
+  middle leans and flickers on its own. Anyone who has asked their machine for
+  less motion gets it all held still.
+- **Nobody is asked to choose between four identical things.** Four pieces
+  sitting in a yard are one move, and when a roll leaves only one legal move the
+  table simply plays it.
+- A bot for every empty seat: it takes a capture when one is going, gets pieces
+  out and home, and tries not to park in front of somebody's start square.
+- Under the hood: `addBot` and `clearSeat` no longer take the server down when a
+  client sends them without a seat number, and a spectator at a Ghahr table is
+  now properly told they are only watching. A pair of stray braces in the
+  stylesheet — left over from an earlier edit — were quietly eating the rule that
+  followed them; they are gone.
+
 ## 1.19.0
 
 - **You can step out of a table without losing it.** A Back arrow in the corner

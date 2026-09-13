@@ -1,7 +1,7 @@
 {
   "name": "hokm-online",
-  "version": "1.19.0",
-  "description": "Online multiplayer board and card games — Hokm (حکم), Bazaar and Snakes & Ladders — with room codes and AI bots",
+  "version": "1.20.0",
+  "description": "Online multiplayer board and card games — Hokm (حکم), Bazaar, Snakes & Ladders and Ghahr Nakon (قهر نکن) — with room codes and AI bots",
   "type": "module",
   "main": "server.js",
   "engines": {
@@ -9,11 +9,12 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node test/simulate.js 300 && node test/snakes.js && node test/monopoly.js 300 && node test/e2e.js && node test/e2e-snakes.js && node test/e2e-monopoly.js",
+    "test": "node test/simulate.js 300 && node test/snakes.js && node test/monopoly.js 300 && node test/ghahr.js 300 && node test/e2e.js && node test/e2e-snakes.js && node test/e2e-monopoly.js && node test/e2e-ghahr.js",
     "test:rules": "node test/simulate.js 300",
     "test:snakes": "node test/snakes.js",
     "test:bazaar": "node test/monopoly.js 300",
-    "test:e2e": "node test/e2e.js && node test/e2e-snakes.js && node test/e2e-monopoly.js"
+    "test:ghahr": "node test/ghahr.js 300",
+    "test:e2e": "node test/e2e.js && node test/e2e-snakes.js && node test/e2e-monopoly.js && node test/e2e-ghahr.js"
   },
   "dependencies": {
     "express": "^4.19.2",

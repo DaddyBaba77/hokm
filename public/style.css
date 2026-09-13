@@ -1458,7 +1458,7 @@ input::placeholder { color: #6d80a0; }
 
 .mono-turn {
   display: flex; align-items: center; gap: 7px; margin-left: auto; margin-right: auto;
-  background: rgba(4,12,28,.55); border: 1px solid rgba(230,189,109,.34);
+  background: rgba(20,14,9,.6); border: 1px solid rgba(214,158,74,.34);
   border-radius: 999px; padding: .2rem .7rem;
 }
 .mono-turn i { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
@@ -2315,6 +2315,301 @@ input::placeholder { color: #6d80a0; }
   .hd-cards { flex-wrap: nowrap; }
 }
 
+/* ══════════════════════════ Ghahr Nakon ══════════════════════════ */
+
+/* the whole screen is a dark room, not just the board */
+#ghahr {
+  background:
+    radial-gradient(ellipse 110% 82% at 50% 46%, #1d150d 0%, #130e09 44%, #060504 100%),
+    #060504;
+}
+#ghahr .btn.primary { box-shadow: 0 0 18px rgba(255,168,70,.25); }
+
+.gh-hud { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: .45rem .9rem; flex: 0 0 auto; }
+.gh-brand {
+  font-weight: 900; letter-spacing: .2em; font-size: .9rem; color: var(--gold);
+  text-shadow: 0 1px 0 rgba(0,0,0,.6); white-space: nowrap;
+}
+.gh-brand span { font-weight: 600; letter-spacing: 0; opacity: .72; margin-left: .5rem; }
+.gh-turn {
+  display: flex; align-items: center; gap: 8px; margin: 0 auto;
+  background: rgba(4,12,28,.55); border: 1px solid rgba(230,189,109,.34);
+  border-radius: 999px; padding: .22rem .8rem;
+}
+.gh-turn i { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; }
+.gh-who  { font-weight: 800; font-size: .9rem; }
+.gh-what { font-size: .74rem; color: var(--muted); }
+.gh-hudright { font-size: .74rem; color: var(--muted); }
+
+.gh-wrap { flex: 1 1 auto; min-height: 0; display: flex; gap: 12px; padding: 0 12px 12px; }
+.gh-boardwrap {
+  flex: 1 1 auto; min-width: 0; min-height: 0; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.gh-board {
+  position: relative; height: 100%; width: auto; aspect-ratio: 1; max-width: 100%;
+  border-radius: 16px;
+  /* a dark room with one candle burning in the middle of the table */
+  background-color: #090705;
+  background-image:
+    radial-gradient(circle 34% at 50% 50%, rgba(255,172,70,.26), rgba(255,140,40,.08) 52%, transparent 76%),
+    radial-gradient(ellipse 80% 80% at 50% 48%, #241c13 0%, #150f0a 46%, #070605 100%);
+  border: 2px solid #4a3517;
+  box-shadow:
+    0 22px 64px rgba(0,0,0,.78),
+    inset 0 0 0 2px rgba(190,140,64,.24),
+    inset 0 0 110px rgba(0,0,0,.82);
+  animation: ghRoom 9s ease-in-out infinite;
+}
+/* the room itself breathes with the flame */
+@keyframes ghRoom {
+  0%, 100% { filter: brightness(1); }
+  17% { filter: brightness(.93); }
+  31% { filter: brightness(1.05); }
+  46% { filter: brightness(.9); }
+  62% { filter: brightness(1.02); }
+  78% { filter: brightness(.96); }
 }
 
+/* the candle at the centre of it all */
+.gh-candle {
+  position: absolute; transform: translate(-50%, -50%);
+  width: var(--u); height: var(--u); border-radius: 50%;
+  display: grid; place-items: center; pointer-events: none; z-index: 1;
+  background: radial-gradient(circle, rgba(255,190,100,.42), rgba(255,150,50,.12) 48%, transparent 74%);
+  animation: ghHalo 5.5s ease-in-out infinite;
+}
+.gh-flame {
+  width: 22%; height: 52%;
+  border-radius: 50% 50% 46% 46% / 68% 68% 32% 32%;
+  background: linear-gradient(to top, #fff3c4, #ffb347 45%, #ff7a18 78%, rgba(255,90,0,.25));
+  box-shadow: 0 0 18px rgba(255,150,50,.85), 0 0 46px rgba(255,110,20,.5);
+  transform-origin: 50% 90%;
+  animation: ghFlame 2.3s ease-in-out infinite;
+}
+@keyframes ghHalo {
+  0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  23% { opacity: .72; transform: translate(-50%, -50%) scale(.9); }
+  44% { opacity: 1;   transform: translate(-50%, -50%) scale(1.08); }
+  67% { opacity: .8;  transform: translate(-50%, -50%) scale(.95); }
+}
+@keyframes ghFlame {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  18% { transform: scale(.92, 1.12) skewX(3deg); }
+  37% { transform: scale(1.06, .9) skewX(-4deg); }
+  58% { transform: scale(.95, 1.08) skewX(2deg); }
+  79% { transform: scale(1.02, .96) skewX(-2deg); }
+}
+
+/* every square and piece is placed by percentage, so both boards share the code.
+   Squares are dark stone; what you see of them is the candlelight on top, and
+   that light gutters — every square with its own delay, so it never pulses in
+   unison the way a lamp would. */
+.gh-sq {
+  position: absolute; transform: translate(-50%, -50%);
+  width: var(--u); height: var(--u); border-radius: 22%;
+  --glow: 210, 150, 70;
+  background:
+    radial-gradient(circle at 42% 32%, rgba(var(--glow), .3), transparent 68%),
+    linear-gradient(168deg, #241d15, #120e0a);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--glow), .42),
+    inset 0 0 9px rgba(var(--glow), .22),
+    0 0 10px rgba(var(--glow), .2),
+    0 1px 3px rgba(0,0,0,.6);
+  opacity: var(--fl, .9);
+  animation: ghGutter var(--fs, 5s) ease-in-out infinite;
+  animation-delay: var(--fd, 0s);
+}
+/* candlelight does not pulse evenly — it dips, catches, dips again */
+@keyframes ghGutter {
+  0%   { opacity: var(--fl, .9);                          filter: brightness(1); }
+  12%  { opacity: calc(var(--fl, .9) * .74);              filter: brightness(.82); }
+  21%  { opacity: calc(var(--fl, .9) * 1.04);             filter: brightness(1.12); }
+  34%  { opacity: calc(var(--fl, .9) * .86);              filter: brightness(.92); }
+  41%  { opacity: calc(var(--fl, .9) * .62);              filter: brightness(.74); }
+  55%  { opacity: calc(var(--fl, .9) * 1.02);             filter: brightness(1.08); }
+  68%  { opacity: calc(var(--fl, .9) * .8);               filter: brightness(.88); }
+  83%  { opacity: calc(var(--fl, .9) * .95);              filter: brightness(1.02); }
+  91%  { opacity: calc(var(--fl, .9) * .7);               filter: brightness(.8); }
+  100% { opacity: var(--fl, .9);                          filter: brightness(1); }
+}
+.gh-board.hex .gh-sq { border-radius: 50%; }
+
+/* the squares nearer the flame sit brighter than the ones out at the rim */
+.gh-track.gh-start {
+  background:
+    radial-gradient(circle at 42% 30%, color-mix(in srgb, var(--c) 62%, transparent), transparent 70%),
+    linear-gradient(168deg, color-mix(in srgb, var(--c) 34%, #241d15), color-mix(in srgb, var(--c) 18%, #0f0c09));
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--c) 78%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--c) 34%, transparent),
+    0 0 16px color-mix(in srgb, var(--c) 42%, transparent),
+    0 2px 6px rgba(0,0,0,.6);
+  --fl: 1;
+}
+.gh-home {
+  background:
+    radial-gradient(circle at 42% 32%, color-mix(in srgb, var(--c) 40%, transparent), transparent 70%),
+    linear-gradient(168deg, color-mix(in srgb, var(--c) 22%, #201a13), color-mix(in srgb, var(--c) 12%, #100d0a));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--c) 26%, transparent),
+    0 0 12px color-mix(in srgb, var(--c) 30%, transparent),
+    0 1px 3px rgba(0,0,0,.55);
+}
+.gh-yard {
+  background: radial-gradient(circle at 38% 28%, rgba(255,255,255,.09), rgba(0,0,0,.55));
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--c) 52%, transparent),
+    0 0 9px color-mix(in srgb, var(--c) 22%, transparent);
+  border-radius: 50%;
+  --fl: .78;
+}
+.gh-yardpad {
+  position: absolute; transform: translate(-50%, -50%);
+  width: var(--u); height: var(--u); border-radius: 18%;
+  background: color-mix(in srgb, var(--c) 10%, rgba(0,0,0,.55));
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--c) 34%, transparent),
+    inset 0 0 22px rgba(0,0,0,.6),
+    0 2px 12px rgba(0,0,0,.6);
+}
+.gh-sq.idle, .gh-yardpad.idle { opacity: .2; animation: none; }
+
+/* somebody who would rather not watch the room flicker */
+@media (prefers-reduced-motion: reduce) {
+  .gh-board, .gh-sq, .gh-candle, .gh-flame { animation: none !important; }
+  .gh-sq { opacity: var(--fl, .9); }
+}
+
+/* where this roll could take you */
+.gh-sq.target {
+  box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px rgba(230,189,109,.55);
+  animation: ghTarget 1.2s ease-in-out infinite;
+}
+.gh-sq.take {
+  box-shadow: inset 0 0 0 2px #ff7a62, 0 0 16px rgba(255,110,80,.6);
+  animation: ghTarget 1s ease-in-out infinite;
+}
+@keyframes ghTarget { 50% { filter: brightness(1.25); } }
+
+.gh-tokens { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.gh-piece {
+  position: absolute; transform: translate(-50%, -55%); padding: 0;
+  width: var(--u); height: var(--u); border-radius: 50%; border: 0;
+  font: inherit; cursor: default; pointer-events: none;
+  transition: left .16s cubic-bezier(.3,.9,.4,1), top .16s cubic-bezier(.3,.9,.4,1), filter .18s;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 88%, rgba(0,0,0,.4), transparent 70%),
+    radial-gradient(circle at 34% 26%, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 72%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.45),
+    0 0 0 1.5px rgba(6,12,24,.9),
+    0 3px 7px rgba(0,0,0,.6);
+}
+.gh-piece {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--c) 45%, transparent));
+}
+.gh-piece.mine { box-shadow: inset 0 0 0 1px rgba(255,255,255,.5), 0 0 0 2px rgba(240,206,130,.95), 0 0 16px rgba(255,168,70,.5), 0 3px 8px rgba(0,0,0,.75); }
+.gh-piece.home { filter: saturate(1.2) brightness(1.1); }
+.gh-piece.canmove {
+  pointer-events: auto; cursor: pointer; z-index: 3;
+  animation: ghLift 1.1s ease-in-out infinite;
+}
+.gh-piece.canmove:hover { filter: brightness(1.2); transform: translate(-50%, -70%) scale(1.16); }
+@keyframes ghLift {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255,255,255,.5), 0 0 0 2px var(--gold), 0 3px 8px rgba(0,0,0,.6); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(255,255,255,.5), 0 0 0 3px var(--gold), 0 0 18px rgba(230,189,109,.75), 0 3px 8px rgba(0,0,0,.6); }
+}
+.gh-piece.hop { animation: ghHop .48s cubic-bezier(.25,1.6,.4,1); }
+@keyframes ghHop { 0% { transform: translate(-50%, -140%) scale(1.3); } 100% { transform: translate(-50%, -55%) scale(1); } }
+.gh-piece.knocked { animation: ghKnock .6s ease-out; z-index: 9; }
+@keyframes ghKnock {
+  0%   { transform: translate(-50%, -55%) scale(1) rotate(0); }
+  35%  { transform: translate(-50%, -160%) scale(1.5) rotate(-25deg); filter: brightness(1.6); }
+  100% { transform: translate(-50%, -55%) scale(1) rotate(0); }
+}
+.gh-piece.landed { animation: ghLanded .6s ease-out; }
+@keyframes ghLanded { 0%, 100% { filter: none; } 40% { filter: brightness(1.7) drop-shadow(0 0 10px var(--c)); } }
+
+/* somebody just got sent home */
+.gh-sulk {
+  position: absolute; left: 50%; top: 22%; transform: translate(-50%, -50%) scale(.86);
+  opacity: 0; transition: transform .3s cubic-bezier(.2,1.5,.4,1), opacity .25s;
+  z-index: 20; pointer-events: none; text-align: center;
+  padding: .7rem 1.2rem; border-radius: 14px;
+  background: linear-gradient(168deg, rgba(38,27,16,.97), rgba(14,10,7,.98));
+  border: 2px solid var(--c, var(--gold));
+  box-shadow: 0 20px 50px rgba(0,0,0,.65), 0 0 34px color-mix(in srgb, var(--c) 45%, transparent);
+}
+.gh-sulk.in { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.gh-sulk.hidden { display: none; }
+.gh-sulk b { display: block; font-size: 1.05rem; color: var(--c, var(--gold)); }
+.gh-sulk span { display: block; font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+
+/* the side panel */
+.gh-side {
+  flex: 0 0 clamp(250px, 21vw, 360px); display: flex; flex-direction: column; gap: 9px;
+  min-height: 0; overflow: hidden; padding-bottom: 40px;
+}
+.gh-players { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+.gh-p {
+  display: flex; align-items: center; gap: 9px; padding: .45rem .55rem;
+  background: rgba(22,16,10,.66); border: 1px solid rgba(214,158,74,.18); border-radius: 10px;
+}
+.gh-p.turn { border-color: rgba(230,189,109,.65); box-shadow: 0 0 12px rgba(230,189,109,.2); }
+.gh-pdot {
+  width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto;
+  background: radial-gradient(circle at 34% 26%, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 72%);
+  box-shadow: 0 0 0 1.5px rgba(6,12,24,.8);
+}
+.gh-pmid { flex: 1 1 auto; min-width: 0; }
+.gh-pname { font-size: .92rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gh-p.me .gh-pname { color: var(--gold); }
+.gh-psub { font-size: .72rem; color: var(--muted); white-space: nowrap; }
+.gh-ppips { display: flex; gap: 3px; flex: 0 0 auto; }
+.gh-ppips i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.14); }
+.gh-ppips i.on { background: var(--c); box-shadow: 0 0 6px color-mix(in srgb, var(--c) 70%, transparent); }
+
+.gh-dicebox {
+  flex: 0 0 auto; display: grid; place-items: center; padding: .7rem;
+  background: rgba(22,16,10,.6); border: 1px solid rgba(214,158,74,.22); border-radius: 12px;
+  box-shadow: inset 0 0 26px rgba(0,0,0,.5);
+}
+.gh-die {
+  width: clamp(58px, 6vw, 86px); aspect-ratio: 1; border-radius: 18%;
+  display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 9%; padding: 13%;
+  background: linear-gradient(160deg, #f6e9cc, #cdb689);
+  box-shadow: inset 0 -5px 12px rgba(110,78,32,.42), 0 0 22px rgba(255,168,70,.28), 0 5px 14px rgba(0,0,0,.7);
+}
+.gh-die i { border-radius: 50%; background: #2a1d0e; box-shadow: inset 0 -1px 1px rgba(0,0,0,.4); }
+.gh-dicebox.rolling { animation: ghShake .5s linear infinite; }
+@keyframes ghShake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(-4px, -6px) rotate(-4deg); }
+  75% { transform: translate(4px, -3px) rotate(4deg); }
+}
+.gh-dicebox.landed { animation: ghLand .4s cubic-bezier(.2,1.7,.4,1); }
+@keyframes ghLand { 0% { transform: scale(1.16) translateY(-4px); } 100% { transform: scale(1); } }
+.gh-dicebox.six { border-color: rgba(230,189,109,.75); box-shadow: 0 0 18px rgba(230,189,109,.3); }
+
+.gh-actions { flex: 0 0 auto; display: flex; flex-direction: column; gap: 7px; }
+.gh-actions .btn { width: 100%; }
+.gh-wait, .gh-pick { margin: 0; font-size: .84rem; color: var(--muted); text-align: center; }
+.gh-pick { color: var(--gold); font-weight: 700; }
+.gh-log {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  font-size: .72rem; color: var(--muted); line-height: 1.4;
+  background: rgba(0,0,0,.26); border-radius: 9px; padding: .4rem .55rem;
+}
+.gh-log p { margin: 0 0 .2rem; }
+
+@media (max-width: 900px), (max-height: 640px) {
+  .gh-wrap { flex-direction: column; gap: 8px; padding: 0 8px 8px; }
+  .gh-board { width: min(100%, 62vh); height: auto; }
+  .gh-side { flex: 1 1 auto; width: 100%; padding-bottom: 44px; }
+  .gh-players { flex-direction: row; flex-wrap: wrap; }
+  .gh-p { flex: 1 1 45%; }
+  .gh-brand { font-size: .74rem; letter-spacing: .12em; }
 }

@@ -15,6 +15,11 @@ import {
   PIECES as MONO_PIECES, TOKENS as MONO_TOKENS,
 } from './src/monopoly.js';
 import { act as monoAct, judgeOffer as monoJudge } from './src/monopoly-bot.js';
+import {
+  GhahrGame, DEFAULT_SETTINGS as GHAHR_DEFAULTS, BOARDS as GHAHR_BOARDS,
+  MIN_PLAYERS as GHAHR_MIN, MAX_PLAYERS as GHAHR_MAX,
+} from './src/ghahr.js';
+import { act as ghahrAct } from './src/ghahr-bot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -46,6 +51,7 @@ const GAMES = {
   hokm:     { id: 'hokm',     name: 'Hokm',             seats: 4,         min: 4,         max: 4,        teams: true  },
   snakes:   { id: 'snakes',   name: 'Snakes & Ladders', seats: SNAKE_MAX, min: SNAKE_MIN, max: SNAKE_MAX, teams: false },
   monopoly: { id: 'monopoly', name: 'Bazaar',           seats: MONO_MAX,  min: MONO_MIN,  max: MONO_MAX,  teams: false, settings: MONO_DEFAULTS },
+  ghahr:    { id: 'ghahr',    name: 'Ghahr Nakon',      seats: GHAHR_MAX, min: GHAHR_MIN, max: GHAHR_MAX, teams: false, settings: GHAHR_DEFAULTS },
 };
 const gameMeta = (type) => GAMES[type] || GAMES.hokm;
 
@@ -124,7 +130,7 @@ function broadcast(room) {
 
 function syncPlayersIntoGame(room) {
   if (!room.game) return;
-  if (room.gameType === 'snakes' || room.gameType === 'monopoly') {
+  if (room.gameType === 'snakes' || room.gameType === 'monopoly' || room.gameType === 'ghahr') {
     // snakes players are compacted at start, so map them one for one
     room.game.players = room.game.players.map((p, i) => {
       const seat = room.seats[i];
@@ -151,6 +157,11 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const ROLL_MS = 45000;
 // long enough for the client to finish hopping, climbing or being eaten
 const SNAKE_BOT_PAUSE = 2600;
+
+// Ghahr Nakon: unhurried enough to watch a piece walk and see who got knocked back.
+const GHAHR_CLOCK = 45000;
+const GHAHR_ROLL_PAUSE = 2200;
+const GHAHR_PICK_PAUSE = 1600;
 
 // Bazaar: how long a present human gets at each decision, and how long a bot
 // pretends to think so the table reads as a game rather than a log file.
@@ -235,6 +246,19 @@ function advance(room) {
     if (g.phase !== 'playing') return;
     if (isAuto(g.players[g.turn])) schedule(SNAKE_BOT_PAUSE, () => g.roll(g.turn));
     else withClock(ROLL_MS, () => g.roll(g.turn));
+    return;
+  }
+
+  if (room.gameType === 'ghahr') {
+    if (g.phase === 'game_over') return;
+    const seat = g.turn;
+    const step = () => {
+      const a = ghahrAct(g, seat);
+      if (!a) return;
+      if (a.type === 'roll') g.roll(seat); else g.move(seat, a.piece);
+    };
+    if (isAuto(g.players[seat])) schedule(g.phase === 'move' ? GHAHR_PICK_PAUSE : GHAHR_ROLL_PAUSE, step);
+    else withClock(GHAHR_CLOCK, step);          // a human who stalls gets played for
     return;
   }
 
@@ -409,18 +433,22 @@ io.on('connection', (socket) => {
     broadcast(r);
   });
 
-  socket.on('addBot', ({ seat }) => {
+  socket.on('addBot', (msg) => {
     const r = room();
     if (!r || r.game) return;
+    // a seat may be named, or the first free one is taken
+    let seat = msg && Number.isInteger(Number(msg.seat)) ? Number(msg.seat) : r.seats.findIndex((s) => !s);
+    if (!(seat >= 0 && seat < r.seats.length)) return fail('The table is full.');
     if (r.seats[seat]) return fail('That seat is taken.');
     const taken = r.seats.filter(Boolean).map((s) => s.name);
     r.seats[seat] = { id: `bot-${seat}-${Date.now()}`, name: botName(taken), isBot: true, connected: true, piece: freePiece(r) };
     broadcast(r);
   });
 
-  socket.on('clearSeat', ({ seat }) => {
+  socket.on('clearSeat', (msg) => {
     const r = room();
     if (!r || r.game) return;
+    const seat = Number(msg && msg.seat);
     const occ = r.seats[seat];
     if (!occ) return;
     // Anyone can remove a bot; only the occupant or host removes a human.
@@ -460,6 +488,12 @@ io.on('connection', (socket) => {
       r.game = new SnakesGame(roster);
     } else if (r.gameType === 'monopoly') {
       r.game = new MonopolyGame(roster, { settings: r.settings || undefined });
+    } else if (r.gameType === 'ghahr') {
+      const cfg = { ...GHAHR_DEFAULTS, ...(r.settings || {}) };
+      // too many players for the cross? the hexagon takes them
+      const fits = GHAHR_BOARDS[cfg.board] || GHAHR_BOARDS.cross;
+      if (roster.length > fits.seats) cfg.board = 'hex';
+      r.game = new GhahrGame(roster, { settings: cfg });
     } else {
       r.game = new HokmGame(roster);
       r.game.startHakemDraw();
@@ -511,6 +545,23 @@ io.on('connection', (socket) => {
       if (typeof patch[k] === 'boolean') s[k] = patch[k];
     }
     if ([1000, 1500, 2000, 2500].includes(Number(patch.startCash))) s.startCash = Number(patch.startCash);
+    if (['cross', 'hex'].includes(patch.board)) s.board = patch.board;
+    for (const k of ['threeTries', 'mustCapture', 'sixMustExit', 'exactHome']) {
+      if (typeof patch[k] === 'boolean') s[k] = patch[k];
+    }
+    broadcast(r);
+  });
+
+  // ── Ghahr Nakon. Roll, then pick a piece when there is a choice.
+  socket.on('ghahr', (a) => {
+    const r = room();
+    if (!r || !r.game || r.gameType !== 'ghahr') return;
+    const seat = seatOfPlayer(r, playerId);
+    if (seat === -1) return fail('You are only watching.');
+    const g = r.game;
+    const res = a && a.type === 'move' ? g.move(seat, Number(a.piece)) : g.roll(seat);
+    if (res && res.error) return fail(res.error);
+    advance(r);
     broadcast(r);
   });
 

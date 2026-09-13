@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-<title>Hokm · Bazaar · Snakes &amp; Ladders</title>
-<meta name="description" content="Play Hokm, Bazaar and Snakes &amp; Ladders online with friends. No accounts, no installs — just send a link." />
+<title>Hokm · Bazaar · Snakes &amp; Ladders · Ghahr Nakon</title>
+<meta name="description" content="Play Hokm, Bazaar, Snakes &amp; Ladders and Ghahr Nakon online with friends. No accounts, no installs — just send a link." />
 <meta name="theme-color" content="#0b1f18" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♠️</text></svg>" />
 <link rel="stylesheet" href="style.css" />
@@ -49,6 +49,18 @@
         <span class="gp-name">Bazaar</span>
         <span class="gp-sub">2&ndash;8 players &middot; property trading</span>
       </button>
+      <button type="button" class="gp" data-game="ghahr">
+        <svg class="gp-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9.6 2.4h4.8v7.2h7.2v4.8h-7.2v7.2H9.6v-7.2H2.4V9.6h7.2z" class="ln"/>
+          <circle cx="6" cy="6" r="1.8"/>
+          <circle cx="18" cy="6" r="1.8"/>
+          <circle cx="6" cy="18" r="1.8"/>
+          <circle cx="18" cy="18" r="1.8"/>
+          <circle cx="12" cy="12" r="1.6"/>
+        </svg>
+        <span class="gp-name">Ghahr Nakon</span>
+        <span class="gp-sub">2&ndash;6 players &middot; don&rsquo;t sulk</span>
+      </button>
       <button type="button" class="gp" data-game="snakes">
         <svg class="gp-ico" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 19c3.4 0 3.4-4 6.8-4s3.4 4 6.8 4" class="ln"/>
@@ -90,6 +102,16 @@
         <li>A <b>six</b> earns you another roll — but roll three sixes in a row and the whole turn is forfeit.</li>
         <li>The board is drawn fresh every game, so nobody can learn it.</li>
       </ul>
+      <ul id="ghahrRules" class="hidden">
+        <li>Everybody has four pieces, and they all start shut in the yard.</li>
+        <li>You need a <b>six</b> to bring one out onto your start square. With every piece still in the yard you get <b>three rolls</b> to find one.</li>
+        <li>A six also earns you <b>another roll</b> — every time.</li>
+        <li>Go all the way round the board and turn into your own <b>home column</b>. First to park all four wins.</li>
+        <li>Land on somebody else and they go <b>straight back to the yard</b>. This is the whole point of the game.</li>
+        <li>You can never land on your own piece, and nobody can be touched once they are in a home column.</li>
+        <li>Overshoot the home column and you bounce back off the end — unless the host asks for an exact roll.</li>
+        <li>The host can also make a six force a piece out, and make knocking somebody back compulsory.</li>
+      </ul>
       <ul id="bazaarRules" class="hidden">
         <li>Two to eight players go round Tehran collecting <b>◈200</b> every time they pass GO.</li>
         <li>Land on an unclaimed street and you buy it — or it goes to auction, depending on the table settings.</li>
@@ -130,7 +152,7 @@
     <details id="tableSettings" class="settings hidden">
       <summary>Table settings</summary>
       <div class="set-grid">
-        <div class="set-row">
+        <div class="set-row" data-for="monopoly">
           <span class="set-label">Landing on something unclaimed</span>
           <div class="seg" data-key="buyMode">
             <button type="button" data-val="buy">Buy or pass</button>
@@ -138,7 +160,7 @@
             <button type="button" data-val="auction">Always auction</button>
           </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-for="monopoly">
           <span class="set-label">How the game ends</span>
           <div class="seg" data-key="endMode">
             <button type="button" data-val="timed">On a clock</button>
@@ -146,7 +168,7 @@
             <button type="button" data-val="last">Last one standing</button>
           </div>
         </div>
-        <div class="set-row" id="setMinutesRow">
+        <div class="set-row" id="setMinutesRow" data-for="monopoly">
           <span class="set-label">Clock</span>
           <div class="seg" data-key="minutes">
             <button type="button" data-val="30">30m</button>
@@ -155,22 +177,39 @@
             <button type="button" data-val="90">90m</button>
           </div>
         </div>
-        <div class="set-row">
+        <div class="set-row" data-for="monopoly">
           <span class="set-label">Starting cash</span>
           <div class="seg" data-key="startCash">
-            <button type="button" data-val="1000">◈1,000</button>
-            <button type="button" data-val="1500">◈1,500</button>
-            <button type="button" data-val="2000">◈2,000</button>
-            <button type="button" data-val="2500">◈2,500</button>
+            <button type="button" data-val="1000">&#9672;1,000</button>
+            <button type="button" data-val="1500">&#9672;1,500</button>
+            <button type="button" data-val="2000">&#9672;2,000</button>
+            <button type="button" data-val="2500">&#9672;2,500</button>
           </div>
         </div>
-        <div class="set-row toggles">
+        <div class="set-row toggles" data-for="monopoly">
           <span class="set-label">House rules</span>
           <div class="toggle-set">
             <label><input type="checkbox" data-key="freeParking" /> <span>Tea house jackpot — taxes and fines pile in the middle</span></label>
             <label><input type="checkbox" data-key="doubleGo" /> <span>Double salary for landing exactly on GO</span></label>
             <label><input type="checkbox" data-key="noJailRent" /> <span>No rent collected while the owner is in the dungeon</span></label>
             <label><input type="checkbox" data-key="tripleDouble" /> <span>Three doubles in a row sends you to jail</span></label>
+          </div>
+        </div>
+
+        <div class="set-row" data-for="ghahr">
+          <span class="set-label">The board</span>
+          <div class="seg" data-key="board">
+            <button type="button" data-val="cross">The cross &middot; up to 4</button>
+            <button type="button" data-val="hex">The hexagon &middot; up to 6</button>
+          </div>
+        </div>
+        <div class="set-row toggles" data-for="ghahr">
+          <span class="set-label">House rules</span>
+          <div class="toggle-set">
+            <label><input type="checkbox" data-key="threeTries" /> <span>Three rolls to find a six while every piece is in the yard</span></label>
+            <label><input type="checkbox" data-key="sixMustExit" /> <span>A six must bring a piece out if the start is free</span></label>
+            <label><input type="checkbox" data-key="mustCapture" /> <span>You must knock somebody back if you can</span></label>
+            <label><input type="checkbox" data-key="exactHome" /> <span>An exact roll to come home — no bouncing off the end</span></label>
           </div>
         </div>
       </div>
@@ -267,6 +306,40 @@
       <h2 id="slOverTitle">Game over</h2>
       <p id="slOverBody"></p>
       <button id="slAgain" class="btn primary big">Back to the lobby</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ Ghahr Nakon ══════════ -->
+<section id="ghahr" class="screen hidden">
+  <header class="hud gh-hud">
+    <div class="gh-brand">GHAHR NAKON <span>قهر نکن</span></div>
+    <div class="gh-turn" id="ghTurn"></div>
+    <div class="gh-hudright"><span id="ghBoardName"></span></div>
+  </header>
+
+  <div class="gh-wrap">
+    <div class="gh-boardwrap">
+      <div class="gh-board" id="ghBoard"></div>
+      <div class="gh-sulk hidden" id="ghSulk"></div>
+    </div>
+
+    <aside class="gh-side">
+      <div class="gh-players" id="ghPlayers"></div>
+      <div class="gh-dicebox" id="ghDicebox">
+        <div class="gh-die" id="ghDie" aria-label="die"></div>
+      </div>
+      <div class="gh-actions" id="ghActions"></div>
+      <div class="gh-log" id="ghLog"></div>
+    </aside>
+  </div>
+
+  <div id="ghOver" class="overlay hidden">
+    <div class="modal">
+      <div class="crest gold">&#9733;</div>
+      <h2 id="ghOverTitle">Game over</h2>
+      <p id="ghOverBody" class="prewrap"></p>
+      <button id="ghAgain" class="btn primary big">Back to the lobby</button>
     </div>
   </div>
 </section>
@@ -472,6 +545,7 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="snakes.js"></script>
+<script src="ghahr.js"></script>
 <script src="bazaar-art.js"></script>
 <script src="monopoly.js"></script>
 <script src="app.js"></script>

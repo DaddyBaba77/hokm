@@ -4,13 +4,14 @@ Online board and card games you host yourself. You send friends a link, they typ
 and you play. No accounts, no installs, no app. Empty seats can be filled with bots, so a
 game works whether you have a full table or none.
 
-Three games so far, picked on the home screen when you create a table:
+Four games so far, picked on the home screen when you create a table:
 
 | Game | Players | |
 |---|---|---|
 | **Hokm** | exactly 4, in two teams | the Persian trick-taking game |
 | **Bazaar** | 2 to 8 | buy the bazaar, and bleed the rest dry |
 | **Snakes & Ladders** | 2 to 8 | a fresh random board every game |
+| **Ghahr Nakon — قهر نکن** | 2 to 6 | four pieces each, a six to get out, and nobody sulk |
 
 ---
 
@@ -173,6 +174,36 @@ saddled corn snake, a striped garter, a rattlesnake with a rattle on its tail �
 on a head is a proper strike: the snake lunges, the jaws open, the board shakes, and your
 token gets dragged down the length of its body to the tail.
 
+## Ghahr Nakon — قهر نکن
+
+*"Don't sulk."* The old cross-and-dice race, played in the dark: the board is a
+room lit by a single candle in the middle, and the path round it glows and
+gutters rather than burning steadily.
+
+Four pieces each, all of them starting in your yard. You need a **six** to bring
+one out, and a six always earns another roll. Go all the way round the board and
+up your own home column; first player with all four parked wins. Land on somebody
+else and they go all the way back to their yard — which is where the name comes
+from.
+
+The host picks the board in the lobby:
+
+- **The cross** seats up to four, forty squares round.
+- **The hexagon** seats up to six, sixty squares round. Sit more than four down
+  at a cross table and it quietly gives you the hexagon instead.
+
+House rules, off unless the host turns them on — except the first, which is on:
+
+- **Three tries for a six.** With everything still in the yard you get three
+  rolls to find one, rather than one roll and a shrug.
+- **A six must bring a piece out** if you have one waiting.
+- **You must knock somebody back** if a legal move of yours would.
+- **Exact roll home.** Overshoot the last slot and the move is simply not
+  allowed; without it you bounce back off the end.
+
+When there is only one thing a roll could possibly do, the table just does it —
+you are never asked to choose between four identical pieces sitting in a yard.
+
 ## How a Hokm game goes
 
 1. One person opens the site, types a name, and hits **Create a table**.
@@ -217,15 +248,23 @@ src/bot.js            Hokm bot play: trump choice, leads, follows, card counting
 src/snakes.js         Snakes & Ladders — board generation, moves, the house rules
 src/monopoly.js       Bazaar — the 40 spaces, deeds, rent, building, auctions, trades
 src/monopoly-bot.js   Bazaar bot play: buying, bidding, building, raising cash, deals
+src/ghahr.js          Ghahr Nakon — both boards, the yards, the home columns, house rules
+src/ghahr-bot.js      Ghahr Nakon bot play: knocking, running, and staying out of range
 public/               the whole client (one HTML page, one stylesheet, a script per game)
 test/simulate.js      thousands of bot Hokm games, checked against every rule
 test/snakes.js        hundreds of Snakes games, checked against every rule
 test/monopoly.js      hundreds of Bazaar games, with every invariant re-checked after
                       every single action
+test/ghahr.js         hundreds of Ghahr Nakon games on both boards, same treatment
 test/e2e*.js          boot the real server and play each game to a finish over sockets
 ```
 
 Run the checks with `npm test`.
+
+Ghahr Nakon's settings are chosen per table in the same way, with their defaults
+in `DEFAULT_SETTINGS` at the top of `src/ghahr.js`; the two boards are `BOARDS`
+just above it, and the shapes they are drawn as live in `makeLayout` in
+`public/ghahr.js`.
 
 Hokm and Snakes have no house-rule toggles — those rules are baked in. If you want
 different Kot values or a different target score, the numbers live at the top of
