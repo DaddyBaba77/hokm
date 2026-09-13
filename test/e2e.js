@@ -122,10 +122,16 @@ try {
 
   // A present-but-idle player is covered by the turn clock rather than stalling the table.
   alice.skipTurn = true;
-  await waitFor(alice, (s) => s.game.phase === 'playing' && s.game.turn === s.game.seat, 'Alice on turn');
-  check(!!alice.state.game.turnDeadline, 'a present human gets a turn clock');
-  check(alice.state.game.turnTotal > 0, 'the clock reports how long it runs');
-  const handBefore = alice.state.game.hand.length;
+  // Read the state waitFor matched on, not whatever has arrived since: with the
+  // test's very short clock the table can have played for her already, and then
+  // the live state no longer carries a deadline at all.
+  const onTurn = await waitFor(
+    alice,
+    (s) => s.game.phase === 'playing' && s.game.turn === s.game.seat && !!s.game.turnDeadline,
+    'Alice on turn with a clock running');
+  check(!!onTurn.game.turnDeadline, 'a present human gets a turn clock');
+  check(onTurn.game.turnTotal > 0, 'the clock reports how long it runs');
+  const handBefore = onTurn.game.hand.length;
   await waitFor(alice, (s) => s.game.hand.length < handBefore, 'the clock played for Alice', 20000);
   check(true, 'the turn clock plays a legal card when a human stalls');
   alice.skipTurn = false;

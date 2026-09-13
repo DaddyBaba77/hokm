@@ -186,6 +186,18 @@ up your own home column; first player with all four parked wins. Land on somebod
 else and they go all the way back to their yard — which is where the name comes
 from.
 
+It is played on a real three-dimensional board: a dark room, one candle on the
+table, and everything you can see lit by that flame. Swing the camera round with
+a drag on the empty table; the view starts behind your own yard. The die sits in
+a tray at your elbow — press it to throw it. When it is your move you can pick a
+piece up and drag it onto one of the glowing squares, tap it and let it walk
+itself, or press **Move it for me**; either way the squares are counted off on
+screen as the piece steps them.
+
+Drop a `piece.glb` into `public/models/` and the men become your own model in
+each player's colour — see `public/models/README.md`. Three.js lives in
+`public/vendor/` and is only fetched when a Ghahr table is opened.
+
 The host picks the board in the lobby:
 
 - **The cross** seats up to four, forty squares round.
@@ -250,6 +262,8 @@ src/monopoly.js       Bazaar — the 40 spaces, deeds, rent, building, auctions,
 src/monopoly-bot.js   Bazaar bot play: buying, bidding, building, raising cash, deals
 src/ghahr.js          Ghahr Nakon — both boards, the yards, the home columns, house rules
 src/ghahr-bot.js      Ghahr Nakon bot play: knocking, running, and staying out of range
+public/ghahr3d.js     the Ghahr board as a 3D scene — candle, pieces, die, dragging
+public/vendor/        Three.js, served by the game rather than fetched from a CDN
 public/               the whole client (one HTML page, one stylesheet, a script per game)
 test/simulate.js      thousands of bot Hokm games, checked against every rule
 test/snakes.js        hundreds of Snakes games, checked against every rule

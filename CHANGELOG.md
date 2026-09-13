@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.21.0
+
+- **Ghahr Nakon is now a real three-dimensional board.** A table in a dark room
+  with one candle burning in the middle of it. The candle is an actual light:
+  it flickers, and when it gutters the whole room dims and every piece's shadow
+  moves with it. You can swing the camera round the table and lean in.
+- **The die is a die.** It sits in a little felt tray at your elbow, and when you
+  roll it tumbles across the table and lands showing what you rolled. Throw it by
+  pressing the die itself, or use the Roll button — both do the same thing.
+- **Move your own man, or let the table do it.** Pick a piece up and drag it to
+  where it lands: the squares it may go to glow, and the one under your hand
+  lifts to meet it. Drop it anywhere else and it goes back. Prefer not to?
+  **Move it for me** plays a sensible move, and tapping a piece walks it itself.
+- **The moves are counted as they are walked.** A big number over the board
+  counts each square the piece steps, so you can see for yourself that it landed
+  where the roll said it should. Press anywhere while it is walking and it
+  hurries up.
+- **Your own corner is nearest.** The camera starts behind your own yard, so the
+  board is the right way round for you without touching anything.
+- **A model of your own.** Drop a `piece.glb` into `public/models/` and every
+  player's four men become that model in their own colour; there is a turned
+  wooden pawn in the meantime. `public/models/README.md` says what the board
+  does with it.
+- Three.js ships with the game rather than coming off a CDN, and it is only
+  fetched when somebody actually opens a Ghahr table — the other three games
+  load exactly as much as they did before.
+
+### Fixed
+
+- **Bazaar: the dice now always show what you rolled.** They were only drawn as
+  part of a piece moving, so a roll that moved nobody — a turn in the dungeon
+  that was not a double, or a third double — cleared the dice and showed you
+  nothing at all. Every roll now has its own identity and plays its own throw,
+  and the dice stay on the table afterwards showing how they fell.
+- Ghahr Nakon bots were listed as "Nasrin (bot) (bot)".
+- The turn-clock check in the Hokm end-to-end run could fail on a busy machine
+  for no good reason. It no longer races.
+
 ## 1.20.0
 
 - **A fourth game: Ghahr Nakon — قهر نکن.** *"Don't sulk."* Four pieces each,

@@ -224,6 +224,7 @@ export class MonopolyGame {
     this.offersThisTurn = 0;
     this.counters = 0;
     this.pot = 0;                                // the tea house jackpot
+    this.rollId = 0;
     this.dice = null;
     this.lastCard = null;
     this.moveId = 0;
@@ -361,7 +362,9 @@ export class MonopolyGame {
     const d2 = forced ? forced[1] : randInt(this.rng, 1, 6);
     const total = d1 + d2;
     const isDouble = d1 === d2;
-    this.dice = { d1, d2, double: isDouble };
+    // every roll gets its own id, so the table can show the dice even when the
+    // roll moves nobody — sitting in the dungeon, or a third double
+    this.dice = { id: ++this.rollId, d1, d2, double: isDouble };
 
     if (this.jailed[seat]) return this._rollInJail(seat, d1, d2, isDouble);
 
@@ -1107,7 +1110,9 @@ export class MonopolyGame {
 
   _endTurn() {
     this.doubles = 0;
-    this.dice = null;
+    // the dice stay on the table showing what they came up. Clearing them here
+    // meant a roll that moved nobody — sitting in the dungeon, or a third
+    // double — reached the table with nothing to show at all.
     this.offersThisTurn = 0;
     this.counters = 0;
     if (this._checkEnd(false)) return;

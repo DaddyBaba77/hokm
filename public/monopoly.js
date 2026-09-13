@@ -25,7 +25,7 @@ window.Bazaar = (function () {
   let tokens = [];                  // one DOM node per player
   let shown = [];                   // where each token is drawn right now
   let queue = [], running = false;
-  let seenMove = 0, seenCard = 0, seenOffer = 0;
+  let seenMove = 0, seenCard = 0, seenOffer = 0, seenDice = 0;
   let deedOpen = null;              // which deed card is on screen
   let deedFace = false;             // showing the painting rather than the rents
   let throwEnergy = 0.4;            // how hard the last throw was shaken, 0–1
@@ -2361,11 +2361,18 @@ window.Bazaar = (function () {
     // the card that sent you somewhere is read out before the piece moves, and
     // any other jump gets a word of explanation first.
     const jobs = [];
-    if (S.lastMove && S.lastMove.id > seenMove) {
-      const move = S.lastMove;
+    const moveNow = S.lastMove && S.lastMove.id > seenMove ? S.lastMove : null;
+    // The dice are their own event. They used to ride along with a move, so a
+    // roll that moved nobody — a turn in the dungeon, a third double — showed
+    // nothing at all when you let go of them.
+    if (S.dice && S.dice.id && S.dice.id > seenDice) {
       const dice = S.dice;
+      seenDice = dice.id;
+      jobs.push({ at: moveNow ? moveNow.id - 0.75 : -Infinity, run: (d) => animateDice(dice, d) });
+    }
+    if (moveNow) {
+      const move = moveNow;
       seenMove = move.id;
-      if (dice && !move.jump) jobs.push({ at: move.id - 0.5, run: (d) => animateDice(dice, d) });
       jobs.push({ at: move.id, move, run: (d) => animateMove(move, d) });
     }
     if (S.lastCard && S.lastCard.at > seenCard) {
@@ -2388,7 +2395,7 @@ window.Bazaar = (function () {
 
   function reset() {
     built = false; cells = []; tokens = []; shown = []; centres = [];
-    queue = []; running = false; seenMove = 0; seenCard = 0; seenOffer = 0; seenMoney = 0;
+    queue = []; running = false; seenMove = 0; seenCard = 0; seenOffer = 0; seenMoney = 0; seenDice = 0;
     zoom = 1; panX = 0; panY = 0; viewSet = false; prevCash = null;
     const fx = $('moneyFx');
     if (fx) fx.innerHTML = '';

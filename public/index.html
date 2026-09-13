@@ -8,6 +8,9 @@
 <meta name="theme-color" content="#0b1f18" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♠️</text></svg>" />
 <link rel="stylesheet" href="style.css" />
+<script type="importmap">
+{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/jsm/"}}
+</script>
 </head>
 <body>
 
@@ -321,14 +324,12 @@
   <div class="gh-wrap">
     <div class="gh-boardwrap">
       <div class="gh-board" id="ghBoard"></div>
+      <div class="gh-step hidden" id="ghStep" aria-live="polite"></div>
       <div class="gh-sulk hidden" id="ghSulk"></div>
     </div>
 
     <aside class="gh-side">
       <div class="gh-players" id="ghPlayers"></div>
-      <div class="gh-dicebox" id="ghDicebox">
-        <div class="gh-die" id="ghDie" aria-label="die"></div>
-      </div>
       <div class="gh-actions" id="ghActions"></div>
       <div class="gh-log" id="ghLog"></div>
     </aside>
